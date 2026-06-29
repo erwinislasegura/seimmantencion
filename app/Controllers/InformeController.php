@@ -50,6 +50,7 @@ class InformeController extends Controller
         $db = \App\Core\App::db();
         $db->beginTransaction();
         try {
+            $this->sanitizeRevisionCards();
             $jsonFields = ['fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'];
             foreach ($jsonFields as $f) {
                 $_POST[$f] = json_encode($_POST[$f] ?? [], JSON_UNESCAPED_UNICODE);
@@ -89,6 +90,36 @@ class InformeController extends Controller
             $db->rollBack();
             flash('error', $e->getMessage());
             redirect($id ? 'informes-cable/editar/' . $id : 'informes-cable/crear');
+        }
+    }
+
+    private function sanitizeRevisionCards(): void
+    {
+        foreach (['pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'] as $field) {
+            if (empty($_POST[$field]) || !is_array($_POST[$field])) {
+                $_POST[$field] = [];
+                continue;
+            }
+            foreach ($_POST[$field] as $item => $values) {
+                if (!is_array($values)) {
+                    unset($_POST[$field][$item]);
+                    continue;
+                }
+                $isOn = !empty($values['realizada']);
+                if (!$isOn) {
+                    unset($_POST[$field][$item]['con_falla']);
+                    if ($field !== 'pruebas_finales') {
+                        unset($_POST[$field][$item]);
+                    }
+                    continue;
+                }
+                $_POST[$field][$item]['realizada'] = '1';
+                if (!empty($values['con_falla'])) {
+                    $_POST[$field][$item]['con_falla'] = '1';
+                } else {
+                    unset($_POST[$field][$item]['con_falla']);
+                }
+            }
         }
     }
 

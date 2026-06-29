@@ -131,3 +131,16 @@ document.addEventListener('DOMContentLoaded',()=>{
   wrap.querySelectorAll('.informe-material-row').forEach(bind);
   add.addEventListener('click',()=>{const row=first.cloneNode(true);row.querySelectorAll('select,input').forEach(el=>el.value='');wrap.append(row);bind(row);});
 });
+
+
+// Tarjetas de revisión de informes: solo permite marcar "Con falla" cuando la prueba está en Sí.
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.revision-card-realizada').forEach(realizada=>{
+    const row=realizada.closest('.switch-line,.input-group');
+    const falla=row?.querySelector('.revision-card-falla');
+    if(!falla) return;
+    const sync=()=>{falla.disabled=!realizada.checked; if(!realizada.checked) falla.checked=false;};
+    realizada.addEventListener('change',sync);
+    sync();
+  });
+});

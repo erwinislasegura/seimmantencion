@@ -1,6 +1,6 @@
 <?php
 $isLogin = str_contains($view, 'auth/');
-$currentPath = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+$currentPath = app_path();
 $currentSection = explode('/', $currentPath)[0] ?: 'dashboard';
 $menuGroups = [
     [

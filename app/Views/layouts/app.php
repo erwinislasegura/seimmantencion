@@ -19,6 +19,7 @@ $menuGroups = [
         'icon' => '02',
         'items' => [
             ['materiales', 'Materiales', 'Stock y fichas'],
+            ['inventario/existencias', 'Existencias', 'Usos e historial'],
             ['cables', 'Cables', 'Activos mineros'],
             ['marcas-cable', 'Marcas', 'Catálogo de marcas'],
         ],
@@ -61,7 +62,7 @@ $menuGroups = [
     </div>
     <nav class="sidebar-nav" aria-label="Navegación principal">
       <?php foreach ($menuGroups as $group): ?>
-        <?php $groupActive = in_array($currentSection, array_column($group['items'], 0), true); ?>
+        <?php $groupActive = false; foreach ($group['items'] as $item) { if ($currentPath === $item[0] || $currentSection === $item[0]) { $groupActive = true; break; } } ?>
         <details class="nav-group<?= $groupActive ? ' active' : '' ?>" <?= $groupActive ? 'open' : '' ?>>
           <summary>
             <span class="nav-index"><?= e($group['icon']) ?></span>
@@ -69,7 +70,7 @@ $menuGroups = [
             <span class="nav-chevron">⌄</span>
           </summary>
           <div class="submenu">
-            <?php foreach ($group['items'] as [$u, $t, $desc]): $active = $currentSection === $u; ?>
+            <?php foreach ($group['items'] as [$u, $t, $desc]): $active = $currentPath === $u || $currentSection === $u; ?>
               <a class="nav-link<?= $active ? ' active' : '' ?>" href="<?= url($u) ?>"<?= $active ? ' aria-current="page"' : '' ?>>
                 <span class="nav-dot"></span>
                 <span><strong><?= e($t) ?></strong><small><?= e($desc) ?></small></span>

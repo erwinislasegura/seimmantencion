@@ -50,14 +50,81 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
   const cs=document.getElementById('cableSelect');function loadCable(){if(!cs)return;const d=JSON.parse(cs.selectedOptions[0].dataset.json||'{}');document.getElementById('cableInfo').innerHTML=['calibre','marca','largo','tipo_enchufe','capacidad_aislacion'].map(k=>`<div><b>${k.replaceAll('_',' ')}</b><br>${d[k]||''}</div>`).join('')} if(cs){cs.addEventListener('change',loadCable);loadCable()}
   if(typeof Chart==='undefined')return;
-  const gridColor='rgba(255,255,255,.08)', textColor='#d8deea';
+  const gridColor='rgba(15,23,42,.10)', textColor='#334155';
   Chart.defaults.color=textColor; Chart.defaults.borderColor=gridColor;
   const emptyPlugin={id:'emptyState',afterDraw(chart){const has=chart.data.datasets.some(ds=>(ds.data||[]).some(v=>Number(v)>0)); if(has)return; const {ctx,chartArea:{left,right,top,bottom}}=chart;ctx.save();ctx.fillStyle='#aeb4c2';ctx.textAlign='center';ctx.fillText('Sin datos disponibles',(left+right)/2,(top+bottom)/2);ctx.restore();}};
   function values(id,labelKey,valueKey){const el=document.getElementById(id); if(!el)return null; const d=JSON.parse(el.dataset.values||'[]'); return {el,labels:d.map(x=>x[labelKey]||'Sin dato'),data:d.map(x=>Number(x[valueKey]||0))};}
   function doughnut(id,labelKey,valueKey,colors){const v=values(id,labelKey,valueKey); if(!v)return; new Chart(v.el,{type:'doughnut',data:{labels:v.labels,datasets:[{data:v.data,backgroundColor:colors,borderWidth:1}]},options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}},plugins:[emptyPlugin]});}
-  function bar(id,labelKey,valueKey,horizontal=false){const v=values(id,labelKey,valueKey); if(!v)return; new Chart(v.el,{type:'bar',data:{labels:v.labels,datasets:[{label:'Total',data:v.data,backgroundColor:'#8cc63f',borderRadius:5}]},options:{maintainAspectRatio:false,indexAxis:horizontal?'y':'x',scales:{x:{grid:{color:gridColor}},y:{grid:{color:gridColor},beginAtZero:true}},plugins:{legend:{display:false}}},plugins:[emptyPlugin]});}
-  doughnut('chartEstados','estado','total',['#8cc63f','#d6c12f','#5867f2','#ff5b5b']);
-  doughnut('chartInformes','estado','total',['#aeb4c2','#8cc63f','#ff5b5b']);
+  function bar(id,labelKey,valueKey,horizontal=false){const v=values(id,labelKey,valueKey); if(!v)return; new Chart(v.el,{type:'bar',data:{labels:v.labels,datasets:[{label:'Total',data:v.data,backgroundColor:'#d96716',borderRadius:5}]},options:{maintainAspectRatio:false,indexAxis:horizontal?'y':'x',scales:{x:{grid:{color:gridColor}},y:{grid:{color:gridColor},beginAtZero:true}},plugins:{legend:{display:false}}},plugins:[emptyPlugin]});}
+  doughnut('chartEstados','estado','total',['#d96716','#d99a22','#2563eb','#b91c1c']);
+  doughnut('chartInformes','estado','total',['#94a3b8','#d96716','#b91c1c']);
   bar('chartFallas','opcion','total'); bar('chartCausas','opcion','total',true); bar('chartMateriales','nombre_material','total');
 });
 function addDetail(){const c=document.querySelector('#detailRows .row').cloneNode(true);c.querySelectorAll('input').forEach(i=>i.value='');document.getElementById('detailRows').appendChild(c)}
+
+// Automatización transversal de formularios: foco inicial, ayudas visuales,
+// borradores por sesión, marcado de requeridos y protección contra doble envío.
+document.addEventListener('DOMContentLoaded',()=>{
+  const today=new Date().toISOString().slice(0,10);
+  document.querySelectorAll('form').forEach((form,idx)=>{
+    if(form.closest('.login-card')) return;
+    form.classList.add('form-enhanced');
+    const key=`seim:draft:${location.pathname}:${idx}`;
+    const fields=Array.from(form.querySelectorAll('input,select,textarea')).filter(el=>el.name&&!['hidden','password','file'].includes(el.type));
+    fields.forEach(el=>{
+      const label=el.id?form.querySelector(`label[for="${el.id}"]`):el.closest('div')?.querySelector('label');
+      if(el.required&&label&&!label.querySelector('.required-mark')) label.insertAdjacentHTML('beforeend','<span class="required-mark">*</span>');
+      if(el.type==='date'&&el.required&&!el.value){el.value=today;el.classList.add('is-autofilled');}
+      if(el.tagName==='TEXTAREA'){
+        const counter=document.createElement('div'); counter.className='form-counter';
+        const update=()=>{counter.textContent=`${el.value.length} caracteres`;};
+        el.insertAdjacentElement('afterend',counter); el.addEventListener('input',update); update();
+      }
+    });
+    const saved=sessionStorage.getItem(key);
+    if(saved){
+      const values=JSON.parse(saved);
+      fields.forEach(el=>{if(values[el.name]!==undefined&&!el.value){el.value=values[el.name];el.classList.add('is-autofilled');}});
+    }
+    const persist=()=>{
+      const values={}; fields.forEach(el=>{if(el.value) values[el.name]=el.value;});
+      if(Object.keys(values).length) sessionStorage.setItem(key,JSON.stringify(values));
+    };
+    fields.forEach(el=>el.addEventListener('input',persist));
+    const first=fields.find(el=>!el.disabled&&!el.readOnly&&el.offsetParent!==null);
+    if(first&&!document.querySelector(':focus')) first.focus({preventScroll:true});
+    form.addEventListener('submit',()=>{
+      sessionStorage.removeItem(key);
+      const submit=form.querySelector('button[type="submit"],button:not([type])');
+      if(submit){submit.disabled=true;submit.classList.add('is-saving');submit.dataset.originalText=submit.textContent;submit.textContent='Guardando...';}
+    });
+    form.addEventListener('invalid',ev=>{ev.target.classList.add('is-invalid-soft');},true);
+    form.addEventListener('input',ev=>{ev.target.classList?.remove('is-invalid-soft');},true);
+  });
+});
+
+// Materiales usados en informes: permite múltiples usuarios y filtra materiales por usuario.
+document.addEventListener('DOMContentLoaded',()=>{
+  const wrap=document.getElementById('informeMaterialRows'), add=document.getElementById('addInformeMaterial');
+  if(!wrap||!add) return;
+  const first=wrap.querySelector('.informe-material-row');
+  if(!first) return;
+  const baseOptions=Array.from(first.querySelector('.informe-material-select').options).map(o=>({value:o.value,text:o.textContent,user:o.dataset.user||'',disponible:o.dataset.disponible||''}));
+  function fill(row){
+    const user=row.querySelector('.informe-material-user').value;
+    const select=row.querySelector('.informe-material-select');
+    const qty=row.querySelector('.informe-material-cantidad');
+    select.innerHTML='<option value="">Seleccione material...</option>';
+    baseOptions.filter(o=>o.value&&o.user===user).forEach(o=>{const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.text;opt.dataset.user=o.user;opt.dataset.disponible=o.disponible;select.append(opt);});
+    select.disabled=!user; qty.disabled=!user; qty.value=''; qty.removeAttribute('max');
+  }
+  function bind(row){
+    const user=row.querySelector('.informe-material-user'), select=row.querySelector('.informe-material-select'), qty=row.querySelector('.informe-material-cantidad'), remove=row.querySelector('.remove-informe-material');
+    user.addEventListener('change',()=>fill(row));
+    select.addEventListener('change',()=>{const max=select.selectedOptions[0]?.dataset.disponible||''; if(max) qty.max=max;});
+    remove.addEventListener('click',()=>{if(wrap.querySelectorAll('.informe-material-row').length>1) row.remove(); else row.querySelectorAll('select,input').forEach(el=>el.value=''); fill(row);});
+    fill(row);
+  }
+  bind(first);
+  add.addEventListener('click',()=>{const row=first.cloneNode(true);row.querySelectorAll('select,input').forEach(el=>el.value='');wrap.append(row);bind(row);});
+});

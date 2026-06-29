@@ -83,6 +83,7 @@ class InformeController extends Controller
             }
 
             $this->guardarOpcionesInforme($m, $id);
+            $this->guardarPruebasInforme($m, $id);
             $this->guardarMaterialesUsados($m, $id);
             $m->audit('Guardar', 'Informes de cable', $id, 'Informe guardado');
             $db->commit();
@@ -173,6 +174,7 @@ class InformeController extends Controller
             $m->execSql("CREATE TABLE IF NOT EXISTS `$table`(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120))");
         }
         $m->execSql('CREATE TABLE IF NOT EXISTS informe_materiales(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,material_id INT NOT NULL,cantidad_utilizada DECIMAL(12,2) NOT NULL)');
+        $m->execSql('CREATE TABLE IF NOT EXISTS informe_pruebas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(80) NOT NULL,item VARCHAR(120) NOT NULL,realizada TINYINT(1) NOT NULL DEFAULT 0,con_falla TINYINT(1) NOT NULL DEFAULT 0,valor VARCHAR(80) NULL,unidad VARCHAR(40) NULL)');
     }
 
     private function ensureColumns(BaseCatalog $m, string $table, array $columns): void
@@ -213,6 +215,28 @@ class InformeController extends Controller
                 $opcion = trim((string)$opcion);
                 if ($opcion === '') continue;
                 $m->execSql("INSERT INTO `$table`(informe_id,opcion) VALUES(?,?)", [$informeId, $opcion]);
+            }
+        }
+    }
+
+
+    private function guardarPruebasInforme(BaseCatalog $m, int $informeId): void
+    {
+        $fields = ['pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'];
+        $m->execSql('DELETE FROM informe_pruebas WHERE informe_id=?', [$informeId]);
+        foreach ($fields as $field) {
+            foreach ($_POST[$field . '_raw'] ?? [] as $item => $values) {
+                if (!is_array($values)) continue;
+                $item = trim((string)$item);
+                if ($item === '') continue;
+                $realizada = !empty($values['realizada']) ? 1 : 0;
+                $conFalla = $realizada && !empty($values['con_falla']) ? 1 : 0;
+                $valor = isset($values['valor']) ? trim((string)$values['valor']) : null;
+                $unidad = isset($values['unidad']) ? trim((string)$values['unidad']) : null;
+                $m->execSql(
+                    'INSERT INTO informe_pruebas(informe_id,campo,item,realizada,con_falla,valor,unidad) VALUES(?,?,?,?,?,?,?)',
+                    [$informeId, $field, $item, $realizada, $conFalla, $valor !== '' ? $valor : null, $unidad !== '' ? $unidad : null]
+                );
             }
         }
     }

@@ -29,14 +29,48 @@ END//
 
 DELIMITER ;
 
+CREATE TABLE IF NOT EXISTS informe_materiales(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,material_id INT NOT NULL,cantidad_utilizada DECIMAL(12,2) NOT NULL);
+CREATE TABLE IF NOT EXISTS informe_pruebas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(80) NOT NULL,item VARCHAR(120) NOT NULL,realizada TINYINT(1) NOT NULL DEFAULT 0,con_falla TINYINT(1) NOT NULL DEFAULT 0,valor VARCHAR(80) NULL,unidad VARCHAR(40) NULL);
+
+CALL seim_add_column_if_missing('informes_cable', 'supervisor_id', 'INT NULL');
+CALL seim_add_column_if_missing('informes_cable', 'fecha_recepcion_cable', 'DATE NULL');
+CALL seim_add_column_if_missing('informes_cable', 'fecha_entrega_cable', 'DATE NULL');
+CALL seim_add_column_if_missing('informes_cable', 'origen_cable', 'VARCHAR(150) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'estado_informe', 'ENUM(''borrador'',''finalizado'',''anulado'') DEFAULT ''borrador''');
+CALL seim_add_column_if_missing('informes_cable', 'rep_ing_mufas_termo', 'INT DEFAULT 0');
+CALL seim_add_column_if_missing('informes_cable', 'rep_ing_mufa_union', 'INT DEFAULT 0');
+CALL seim_add_column_if_missing('informes_cable', 'rep_ing_chaquetas', 'INT DEFAULT 0');
+CALL seim_add_column_if_missing('informes_cable', 'rep_sal_mufas_termo', 'INT DEFAULT 0');
+CALL seim_add_column_if_missing('informes_cable', 'rep_sal_mufa_union', 'INT DEFAULT 0');
+CALL seim_add_column_if_missing('informes_cable', 'rep_sal_chaquetas', 'INT DEFAULT 0');
+CALL seim_add_column_if_missing('informes_cable', 'estado_operativo', 'VARCHAR(40) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'destino_cable', 'VARCHAR(120) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'tipo_enchufe_entrega', 'VARCHAR(120) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'largo_entrega', 'VARCHAR(80) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'marca_entrega', 'VARCHAR(100) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'capacidad_aislacion_entrega', 'VARCHAR(120) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'fallas_chaquetas', 'JSON NULL');
+CALL seim_add_column_if_missing('informes_cable', 'fallas_enchufe', 'JSON NULL');
+CALL seim_add_column_if_missing('informes_cable', 'lugares_falla', 'JSON NULL');
+CALL seim_add_column_if_missing('informes_cable', 'causas_probables', 'JSON NULL');
 CALL seim_add_column_if_missing('informes_cable', 'pruebas_continuidad', 'JSON NULL');
 CALL seim_add_column_if_missing('informes_cable', 'prueba_ez_thump', 'JSON NULL');
 CALL seim_add_column_if_missing('informes_cable', 'continuidad_final', 'JSON NULL');
 CALL seim_add_column_if_missing('informes_cable', 'vlf', 'JSON NULL');
 CALL seim_add_column_if_missing('informes_cable', 'pruebas_finales', 'JSON NULL');
+CALL seim_add_column_if_missing('informes_cable', 'observacion_final', 'TEXT NULL');
+CALL seim_add_column_if_missing('informes_cable', 'creado_por', 'INT NULL');
+CALL seim_add_column_if_missing('informes_cable', 'actualizado_por', 'INT NULL');
+CALL seim_add_column_if_missing('informes_cable', 'created_at', 'TIMESTAMP NULL');
+CALL seim_add_column_if_missing('informes_cable', 'updated_at', 'TIMESTAMP NULL');
 CALL seim_add_column_if_missing('informes_cable', 'deleted_at', 'TIMESTAMP NULL');
 CALL seim_add_column_if_missing('informe_materiales', 'entrega_detalle_id', 'INT NULL');
 CALL seim_add_column_if_missing('informe_materiales', 'stock_usuario_antes', 'DECIMAL(12,2) NULL');
 CALL seim_add_column_if_missing('informe_materiales', 'stock_usuario_despues', 'DECIMAL(12,2) NULL');
+
+CREATE TABLE IF NOT EXISTS informe_fallas_chaquetas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120));
+CREATE TABLE IF NOT EXISTS informe_fallas_enchufe(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120));
+CREATE TABLE IF NOT EXISTS informe_lugares_falla(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120));
+CREATE TABLE IF NOT EXISTS informe_causas_probables(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120));
 
 DROP PROCEDURE seim_add_column_if_missing;

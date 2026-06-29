@@ -30,6 +30,24 @@ document.addEventListener('DOMContentLoaded',()=>{
     search.addEventListener('input',()=>{page=1;render()}); prev.addEventListener('click',()=>{page--;render()}); next.addEventListener('click',()=>{page++;render()}); render();
   }
   document.querySelectorAll('.datatable').forEach(enhanceTable);
+
+  const recepcionUsuario=document.getElementById('recepcionUsuario');
+  if(recepcionUsuario){
+    const detailRows=document.getElementById('detailRows'), empty=document.getElementById('recepcionEmpty'), save=document.getElementById('saveRecepcion'), add=document.getElementById('addRecepcionDetail');
+    const firstRow=detailRows?.querySelector('.recepcion-row');
+    const allOptions=firstRow?Array.from(firstRow.querySelector('.recepcion-detalle').options).map(o=>({value:o.value,text:o.textContent,user:o.dataset.user||''})):[];
+    function fillSelect(select,user){
+      select.innerHTML='<option value="">Seleccione material...</option>';
+      allOptions.filter(o=>o.value&&o.user===user).forEach(o=>{const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.text;opt.dataset.user=o.user;select.append(opt);});
+    }
+    function filterRecepcionDetails(){
+      const user=recepcionUsuario.value, hasItems=allOptions.some(o=>o.value&&o.user===user);
+      if(firstRow){detailRows.querySelectorAll('.recepcion-row').forEach((row,i)=>{if(i>0)row.remove();});fillSelect(firstRow.querySelector('.recepcion-detalle'),user);firstRow.querySelectorAll('input').forEach(i=>i.value='');}
+      if(empty){empty.textContent=user?(hasItems?'Materiales pendientes para el usuario seleccionado.':'Este usuario no tiene materiales pendientes por devolver.'):'Seleccione un usuario para ver sus materiales pendientes.';empty.className=`alert ${hasItems?'alert-info':'alert-warning'} py-2`;}
+      if(save)save.disabled=!user||!hasItems; if(add)add.disabled=!user||!hasItems;
+    }
+    recepcionUsuario.addEventListener('change',filterRecepcionDetails); filterRecepcionDetails();
+  }
   const cs=document.getElementById('cableSelect');function loadCable(){if(!cs)return;const d=JSON.parse(cs.selectedOptions[0].dataset.json||'{}');document.getElementById('cableInfo').innerHTML=['calibre','marca','largo','tipo_enchufe','capacidad_aislacion'].map(k=>`<div><b>${k.replaceAll('_',' ')}</b><br>${d[k]||''}</div>`).join('')} if(cs){cs.addEventListener('change',loadCable);loadCable()}
   if(typeof Chart==='undefined')return;
   const gridColor='rgba(255,255,255,.08)', textColor='#d8deea';

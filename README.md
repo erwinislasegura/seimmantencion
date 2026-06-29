@@ -15,11 +15,11 @@ Sistema web MVC en PHP 8.1+ para SEIM / JC Servicios, orientado a mantención de
    mysql -u root -p < database/schema.sql
    ```
 3. Configure conexión en `app/Config/config.php` o variables de entorno:
-   - `APP_URL=http://localhost/seimmantencion/public`
+   - `APP_URL=https://tudominio.cl/public` si el DocumentRoot apunta a la raíz del proyecto, o `https://tudominio.cl` si apunta directamente a `public`.
    - `DB_HOST=127.0.0.1`
-   - `DB_NAME=seim_mantencion`
-   - `DB_USER=root`
-   - `DB_PASS=`
+   - `DB_NAME=seimenergia_mantencion`
+   - `DB_USER=seimenergia_mantencion`
+   - `DB_PASS=lK9H?c$GF1^vE@iQ`
 4. Verifique que Apache permita `.htaccess` (`AllowOverride All`).
 5. Dé permisos de escritura a:
    - `public/uploads/materiales`
@@ -54,6 +54,11 @@ Sistema web MVC en PHP 8.1+ para SEIM / JC Servicios, orientado a mantención de
 - `/cables`, `/cables/historial/{id}`
 - `/informes-cable`, `/informes-cable/imprimir/{id}`
 - `/marcas-cable`, `/reportes`
+
+## Hosting compartido y rutas
+- Si sube el proyecto completo al hosting y el DocumentRoot queda en la raíz del proyecto, use la URL con `/public` en `APP_URL` para que CSS, JS, imágenes y uploads apunten correctamente a `public/assets` y `public/uploads`.
+- Si configura el DocumentRoot del dominio o subdominio directamente hacia la carpeta `public`, use `APP_URL` sin `/public`.
+- Si no define `APP_URL`, la aplicación detecta automáticamente protocolo, dominio y subcarpeta desde `SCRIPT_NAME`, `HTTP_HOST` y encabezados de proxy.
 
 ## Notas
 La aplicación usa Bootstrap 5, DataTables, Chart.js, HTML/CSS/JS vanilla y PHP puro sin Laravel ni frameworks pesados. La interfaz utiliza una paleta industrial oscura basada en SEIM Energía.

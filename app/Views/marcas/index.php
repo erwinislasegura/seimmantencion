@@ -1,0 +1,1 @@
+<div class="card-dark"><h5>Marcas de cable</h5><table class="table table-dark table-sm datatable"><thead><tr><th>ID</th><th>Marca</th><th>Estado</th></tr></thead><tbody><?php foreach($rows as $r): ?><tr><td><?= $r['id'] ?></td><td><?= e($r['nombre']) ?></td><td><?= badge($r['estado']) ?></td></tr><?php endforeach; ?></tbody></table></div>

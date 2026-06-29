@@ -1,0 +1,4 @@
+<?php
+namespace App\Controllers;
+use App\Core\Controller; use App\Models\BaseCatalog;
+class ReporteController extends Controller { public function index():void{$this->requirePermission('Reportes');$m=new BaseCatalog;$rows=$m->fetchAll('SELECT i.*, c.numero_cable FROM informes_cable i JOIN cables c ON c.id=i.cable_id WHERE (?="" OR i.fecha_recepcion_cable>=?) AND (?="" OR i.fecha_recepcion_cable<=?) ORDER BY i.id DESC',[$_GET['desde']??'',$_GET['desde']??'',$_GET['hasta']??'',$_GET['hasta']??'']); if(($_GET['export']??'')==='csv'){header('Content-Type:text/csv');header('Content-Disposition:attachment; filename=reportes.csv');$out=fopen('php://output','w');fputcsv($out,['ID','Cable','Fecha','Estado']);foreach($rows as $r)fputcsv($out,[$r['id'],$r['numero_cable'],$r['fecha_recepcion_cable'],$r['estado_operativo']]);exit;} $this->view('reportes/index',compact('rows'));}}

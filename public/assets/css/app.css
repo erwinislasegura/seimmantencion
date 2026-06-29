@@ -14,3 +14,19 @@
 
 /* Ajustes de informe: switches alineados y materiales usados */
 .switch-line{display:grid;grid-template-columns:1fr 92px 110px;align-items:center;gap:12px;min-height:36px}.switch-line .switch{justify-self:center}.switch-line .fault-check{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin:0;color:#334155}.report-form .panel{border-radius:14px}.informe-material-row{align-items:end}.remove-informe-material{min-height:36px}.informe-material-select:disabled,.informe-material-cantidad:disabled{background:#f1f5f9!important;color:#94a3b8!important}@media(max-width:768px){.switch-line{grid-template-columns:1fr;gap:6px}.switch-line .switch{justify-self:start}.switch-line .fault-check{justify-content:flex-start}}
+
+/* Login móvil y sesiones: mantiene el formulario visible en pantallas pequeñas. */
+.login-bg{
+  min-height:100svh;
+  padding:24px 12px;
+  overflow-y:auto;
+}
+.login-card form{display:grid;gap:8px}
+.login-card .form-control{min-height:42px;font-size:16px}
+@media(max-width:576px){
+  .login-bg{place-items:start center;padding:14px 10px}
+  .login-card{width:100%;padding:18px 16px;border-radius:16px;margin:0 auto}
+  .login-logo{width:170px;max-width:72%;margin-bottom:12px}
+  .login-card h2{font-size:14px;margin-bottom:14px;line-height:1.3}
+  .login-card small{font-size:11px;margin-top:8px}
+}

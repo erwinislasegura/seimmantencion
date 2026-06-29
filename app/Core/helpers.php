@@ -4,7 +4,25 @@ function url(string $path = ''): string { return App\Core\App::config('base_url'
 function redirect(string $path): never { header('Location: ' . url($path)); exit; }
 function csrf_token(): string { $_SESSION['_csrf'] ??= bin2hex(random_bytes(32)); return $_SESSION['_csrf']; }
 function csrf_field(): string { return '<input type="hidden" name="_csrf" value="'.e(csrf_token()).'">'; }
-function verify_csrf(): void { if ($_SERVER['REQUEST_METHOD'] === 'POST' && !hash_equals($_SESSION['_csrf'] ?? '', $_POST['_csrf'] ?? '')) { http_response_code(419); exit('Token CSRF inválido'); } }
+function refresh_csrf_token(): string { $_SESSION['_csrf'] = bin2hex(random_bytes(32)); return $_SESSION['_csrf']; }
+function verify_csrf(): void {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+
+    $sessionToken = $_SESSION['_csrf'] ?? '';
+    $postedToken = $_POST['_csrf'] ?? '';
+    if ($sessionToken !== '' && is_string($postedToken) && hash_equals($sessionToken, $postedToken)) return;
+
+    refresh_csrf_token();
+    flash('error', 'La sesión de seguridad expiró. Intente nuevamente.');
+    $back = trim(parse_url($_SERVER['HTTP_REFERER'] ?? '', PHP_URL_PATH) ?: '', '/');
+    $base = trim(parse_url(App\Core\App::config('base_url'), PHP_URL_PATH) ?: '', '/');
+    foreach (array_filter([$base, trim(dirname('/' . $base), '/.')]) as $prefix) {
+        if ($back === $prefix) { $back = ''; break; }
+        if (str_starts_with($back, $prefix . '/')) { $back = trim(substr($back, strlen($prefix)), '/'); break; }
+    }
+    if ($back === '' || $back === 'public') $back = 'login';
+    redirect($back);
+}
 function flash(string $key, ?string $msg = null): ?string { if ($msg !== null) { $_SESSION['_flash'][$key] = $msg; return null; } $v = $_SESSION['_flash'][$key] ?? null; unset($_SESSION['_flash'][$key]); return $v; }
 function current_user(): ?array { return $_SESSION['user'] ?? null; }
 function badge(string $estado): string { $map=['activo'=>'success','inactivo'=>'secondary','disponible'=>'success','en reparación'=>'warning','entregado'=>'info','dado de baja'=>'danger','borrador'=>'secondary','finalizado'=>'success','anulado'=>'danger','activa'=>'warning','cerrada'=>'success','crítico'=>'danger','critico'=>'danger','bajo'=>'warning','normal'=>'success']; return '<span class="badge text-bg-'.($map[$estado]??'secondary').'">'.e($estado).'</span>'; }

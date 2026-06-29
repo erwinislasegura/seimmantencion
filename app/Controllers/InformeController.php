@@ -144,15 +144,15 @@ class InformeController extends Controller
             'largo_entrega' => 'VARCHAR(80) NULL',
             'marca_entrega' => 'VARCHAR(100) NULL',
             'capacidad_aislacion_entrega' => 'VARCHAR(120) NULL',
-            'fallas_chaquetas' => 'JSON NULL',
-            'fallas_enchufe' => 'JSON NULL',
-            'lugares_falla' => 'JSON NULL',
-            'causas_probables' => 'JSON NULL',
-            'pruebas_continuidad' => 'JSON NULL',
-            'prueba_ez_thump' => 'JSON NULL',
-            'continuidad_final' => 'JSON NULL',
-            'vlf' => 'JSON NULL',
-            'pruebas_finales' => 'JSON NULL',
+            'fallas_chaquetas' => 'LONGTEXT NULL',
+            'fallas_enchufe' => 'LONGTEXT NULL',
+            'lugares_falla' => 'LONGTEXT NULL',
+            'causas_probables' => 'LONGTEXT NULL',
+            'pruebas_continuidad' => 'LONGTEXT NULL',
+            'prueba_ez_thump' => 'LONGTEXT NULL',
+            'continuidad_final' => 'LONGTEXT NULL',
+            'vlf' => 'LONGTEXT NULL',
+            'pruebas_finales' => 'LONGTEXT NULL',
             'observacion_final' => 'TEXT NULL',
             'creado_por' => 'INT NULL',
             'actualizado_por' => 'INT NULL',
@@ -195,19 +195,9 @@ class InformeController extends Controller
         $m->execSql('CREATE TABLE IF NOT EXISTS informe_pruebas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(80) NOT NULL,item VARCHAR(120) NOT NULL,realizada TINYINT(1) NOT NULL DEFAULT 0,con_falla TINYINT(1) NOT NULL DEFAULT 0,valor VARCHAR(80) NULL,unidad VARCHAR(40) NULL)');
     }
 
-
-    private function ensureInformeTables(BaseCatalog $m): void
-    {
-        foreach (['informe_fallas_chaquetas', 'informe_fallas_enchufe', 'informe_lugares_falla', 'informe_causas_probables'] as $table) {
-            $m->execSql("CREATE TABLE IF NOT EXISTS `$table`(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120))");
-        }
-        $m->execSql('CREATE TABLE IF NOT EXISTS informe_materiales(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,material_id INT NOT NULL,cantidad_utilizada DECIMAL(12,2) NOT NULL)');
-        $m->execSql('CREATE TABLE IF NOT EXISTS informe_pruebas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(80) NOT NULL,item VARCHAR(120) NOT NULL,realizada TINYINT(1) NOT NULL DEFAULT 0,con_falla TINYINT(1) NOT NULL DEFAULT 0,valor VARCHAR(80) NULL,unidad VARCHAR(40) NULL)');
-    }
-
     private function ensureColumns(BaseCatalog $m, string $table, array $columns): void
     {
-        $tableExists = $m->fetch('SHOW TABLES LIKE ?', [$table]);
+        $tableExists = $m->fetch('SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$table]);
         if (!$tableExists) {
             throw new \RuntimeException("La tabla requerida `$table` no existe en la base de datos.");
         }

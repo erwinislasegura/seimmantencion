@@ -195,6 +195,16 @@ class InformeController extends Controller
         $m->execSql('CREATE TABLE IF NOT EXISTS informe_pruebas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(80) NOT NULL,item VARCHAR(120) NOT NULL,realizada TINYINT(1) NOT NULL DEFAULT 0,con_falla TINYINT(1) NOT NULL DEFAULT 0,valor VARCHAR(80) NULL,unidad VARCHAR(40) NULL)');
     }
 
+
+    private function ensureInformeTables(BaseCatalog $m): void
+    {
+        foreach (['informe_fallas_chaquetas', 'informe_fallas_enchufe', 'informe_lugares_falla', 'informe_causas_probables'] as $table) {
+            $m->execSql("CREATE TABLE IF NOT EXISTS `$table`(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120))");
+        }
+        $m->execSql('CREATE TABLE IF NOT EXISTS informe_materiales(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,material_id INT NOT NULL,cantidad_utilizada DECIMAL(12,2) NOT NULL)');
+        $m->execSql('CREATE TABLE IF NOT EXISTS informe_pruebas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(80) NOT NULL,item VARCHAR(120) NOT NULL,realizada TINYINT(1) NOT NULL DEFAULT 0,con_falla TINYINT(1) NOT NULL DEFAULT 0,valor VARCHAR(80) NULL,unidad VARCHAR(40) NULL)');
+    }
+
     private function ensureColumns(BaseCatalog $m, string $table, array $columns): void
     {
         $tableExists = $m->fetch('SHOW TABLES LIKE ?', [$table]);

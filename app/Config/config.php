@@ -36,9 +36,9 @@ return [
     'base_url' => rtrim($envAppUrl !== '' ? $envAppUrl : $detectedBaseUrl, '/'),
     'db' => [
         'host' => $_ENV['DB_HOST'] ?? '127.0.0.1',
-        'name' => $_ENV['DB_NAME'] ?? 'seim_mantencion',
-        'user' => $_ENV['DB_USER'] ?? 'root',
-        'pass' => $_ENV['DB_PASS'] ?? '',
+        'name' => $_ENV['DB_NAME'] ?? 'seimenergia_mantencion',
+        'user' => $_ENV['DB_USER'] ?? 'seimenergia_mantencion',
+        'pass' => $_ENV['DB_PASS'] ?? 'lK9H?c$GF1^vE@iQ',
         'charset' => 'utf8mb4',
     ],
     'upload_max_bytes' => 3 * 1024 * 1024,

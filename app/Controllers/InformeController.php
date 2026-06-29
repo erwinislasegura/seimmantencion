@@ -10,6 +10,8 @@ class InformeController extends Controller
     public function index(): void
     {
         $this->requirePermission('Informes de cable');
+        $base = new BaseCatalog;
+        $this->ensureInformeJsonColumns($base);
         $rows = (new InformeModel)->list();
         $this->view('informes/index', compact('rows'));
     }
@@ -18,6 +20,7 @@ class InformeController extends Controller
     {
         $this->requirePermission('Informes de cable', $id ? 'editar' : 'crear');
         $m = new BaseCatalog;
+        $this->ensureInformeJsonColumns($m);
         $inf = new InformeModel;
         $item = $id ? $m->find('informes_cable', (int)$id) : null;
         if ($id && !$item) {
@@ -27,8 +30,10 @@ class InformeController extends Controller
         $cables = $m->fetchAll('SELECT c.*, mc.nombre marca FROM cables c LEFT JOIN marcas_cable mc ON mc.id=c.marca_id WHERE c.deleted_at IS NULL');
         $supervisores = $m->all('usuarios', 'nombre');
         $origenes = $m->all('origenes_cable', 'nombre');
-        $materialesUsuario = $m->fetchAll('SELECT d.id detalle_id,e.usuario_receptor_id,CONCAT(u.nombre," ",u.apellido) usuario,m.id material_id,m.codigo_interno,m.nombre_material,m.unidad_medida,d.cantidad_disponible FROM entrega_material_detalle d JOIN entregas_materiales e ON e.id=d.entrega_id JOIN usuarios u ON u.id=e.usuario_receptor_id JOIN materiales m ON m.id=d.material_id WHERE e.estado="activa" AND d.cantidad_disponible>0 ORDER BY u.nombre,u.apellido,m.nombre_material');
-        $this->view('informes/form', compact('item', 'cables', 'supervisores', 'origenes', 'materialesUsuario', 'inf'));
+        $informeId = $item ? (int)$item['id'] : 0;
+        $materialesUsuario = $m->fetchAll('SELECT d.id detalle_id,e.usuario_receptor_id,CONCAT(u.nombre," ",u.apellido) usuario,m.id material_id,m.codigo_interno,m.nombre_material,m.unidad_medida,(d.cantidad_disponible+COALESCE(im.cantidad_utilizada,0)) cantidad_disponible,COALESCE(im.cantidad_utilizada,0) cantidad_utilizada FROM entrega_material_detalle d JOIN entregas_materiales e ON e.id=d.entrega_id JOIN usuarios u ON u.id=e.usuario_receptor_id JOIN materiales m ON m.id=d.material_id LEFT JOIN informe_materiales im ON im.entrega_detalle_id=d.id AND im.informe_id=? WHERE (e.estado="activa" AND d.cantidad_disponible>0) OR im.id IS NOT NULL ORDER BY u.nombre,u.apellido,m.nombre_material', [$informeId]);
+        $materialesInforme = array_values(array_filter($materialesUsuario, fn($material) => (float)($material['cantidad_utilizada'] ?? 0) > 0));
+        $this->view('informes/form', compact('item', 'cables', 'supervisores', 'origenes', 'materialesUsuario', 'materialesInforme', 'inf'));
     }
 
     public function save($routeId = null): void
@@ -41,15 +46,16 @@ class InformeController extends Controller
         $this->requirePermission('Informes de cable', $id ? 'editar' : 'crear');
 
         $m = new BaseCatalog;
+        $this->ensureInformeJsonColumns($m);
         $db = \App\Core\App::db();
         $db->beginTransaction();
         try {
-            $jsonFields = ['fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables'];
+            $jsonFields = ['fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'];
             foreach ($jsonFields as $f) {
                 $_POST[$f] = json_encode($_POST[$f] ?? [], JSON_UNESCAPED_UNICODE);
             }
 
-            $cols = ['supervisor_id', 'fecha_recepcion_cable', 'fecha_entrega_cable', 'cable_id', 'origen_cable', 'estado_informe', 'rep_ing_mufas_termo', 'rep_ing_mufa_union', 'rep_ing_chaquetas', 'rep_sal_mufas_termo', 'rep_sal_mufa_union', 'rep_sal_chaquetas', 'estado_operativo', 'destino_cable', 'tipo_enchufe_entrega', 'largo_entrega', 'marca_entrega', 'capacidad_aislacion_entrega', 'fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'observacion_final'];
+            $cols = ['supervisor_id', 'fecha_recepcion_cable', 'fecha_entrega_cable', 'cable_id', 'origen_cable', 'estado_informe', 'rep_ing_mufas_termo', 'rep_ing_mufa_union', 'rep_ing_chaquetas', 'rep_sal_mufas_termo', 'rep_sal_mufa_union', 'rep_sal_chaquetas', 'estado_operativo', 'destino_cable', 'tipo_enchufe_entrega', 'largo_entrega', 'marca_entrega', 'capacidad_aislacion_entrega', 'fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales', 'observacion_final'];
             $p = array_map(fn($c) => $_POST[$c] ?? null, $cols);
 
             if ($id !== null) {
@@ -86,6 +92,24 @@ class InformeController extends Controller
         }
     }
 
+    private function ensureInformeJsonColumns(BaseCatalog $m): void
+    {
+        $columns = [
+            'pruebas_continuidad' => 'JSON NULL',
+            'prueba_ez_thump' => 'JSON NULL',
+            'continuidad_final' => 'JSON NULL',
+            'vlf' => 'JSON NULL',
+            'pruebas_finales' => 'JSON NULL',
+            'deleted_at' => 'TIMESTAMP NULL',
+        ];
+        foreach ($columns as $column => $definition) {
+            $exists = $m->fetch('SHOW COLUMNS FROM informes_cable LIKE ?', [$column]);
+            if (!$exists) {
+                $m->execSql("ALTER TABLE informes_cable ADD COLUMN $column $definition");
+            }
+        }
+    }
+
     private function resolveInformeId($routeId = null): ?int
     {
         $candidate = $routeId ?: ($_POST['id'] ?? null);
@@ -116,10 +140,30 @@ class InformeController extends Controller
         }
     }
 
+    public function delete($id): void
+    {
+        verify_csrf();
+        $this->requirePermission('Informes de cable', 'eliminar');
+        $m = new BaseCatalog;
+        $this->ensureInformeJsonColumns($m);
+        try {
+            if (!$m->find('informes_cable', (int)$id)) {
+                throw new \RuntimeException('Informe no encontrado.');
+            }
+            $m->softDelete('informes_cable', (int)$id);
+            $m->audit('Eliminar', 'Informes de cable', (int)$id, 'Informe eliminado');
+            flash('success', 'Informe eliminado.');
+        } catch (\Throwable $e) {
+            flash('error', 'No se pudo eliminar el informe: ' . $e->getMessage());
+        }
+        redirect('informes-cable');
+    }
+
     public function print($id): void
     {
         $this->requirePermission('Informes de cable', 'imprimir');
         $m = new BaseCatalog;
+        $this->ensureInformeJsonColumns($m);
         $item = $m->fetch('SELECT i.*, c.numero_cable FROM informes_cable i JOIN cables c ON c.id=i.cable_id WHERE i.id=?', [$id]);
         if (!$item) {
             http_response_code(404);

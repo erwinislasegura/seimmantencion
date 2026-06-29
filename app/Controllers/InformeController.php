@@ -11,7 +11,7 @@ class InformeController extends Controller
     {
         $this->requirePermission('Informes de cable');
         $base = new BaseCatalog;
-        $this->ensureInformeJsonColumns($base);
+        $this->ensureInformeSchema($base);
         $rows = (new InformeModel)->list();
         $this->view('informes/index', compact('rows'));
     }
@@ -20,7 +20,7 @@ class InformeController extends Controller
     {
         $this->requirePermission('Informes de cable', $id ? 'editar' : 'crear');
         $m = new BaseCatalog;
-        $this->ensureInformeJsonColumns($m);
+        $this->ensureInformeSchema($m);
         $inf = new InformeModel;
         $item = $id ? $m->find('informes_cable', (int)$id) : null;
         if ($id && !$item) {
@@ -46,7 +46,7 @@ class InformeController extends Controller
         $this->requirePermission('Informes de cable', $id ? 'editar' : 'crear');
 
         $m = new BaseCatalog;
-        $this->ensureInformeJsonColumns($m);
+        $this->ensureInformeSchema($m);
         $db = \App\Core\App::db();
         $db->beginTransaction();
         try {
@@ -123,20 +123,29 @@ class InformeController extends Controller
         }
     }
 
-    private function ensureInformeJsonColumns(BaseCatalog $m): void
+    private function ensureInformeSchema(BaseCatalog $m): void
     {
-        $columns = [
+        $this->ensureColumns($m, 'informes_cable', [
             'pruebas_continuidad' => 'JSON NULL',
             'prueba_ez_thump' => 'JSON NULL',
             'continuidad_final' => 'JSON NULL',
             'vlf' => 'JSON NULL',
             'pruebas_finales' => 'JSON NULL',
             'deleted_at' => 'TIMESTAMP NULL',
-        ];
+        ]);
+        $this->ensureColumns($m, 'informe_materiales', [
+            'entrega_detalle_id' => 'INT NULL',
+            'stock_usuario_antes' => 'DECIMAL(12,2) NULL',
+            'stock_usuario_despues' => 'DECIMAL(12,2) NULL',
+        ]);
+    }
+
+    private function ensureColumns(BaseCatalog $m, string $table, array $columns): void
+    {
         foreach ($columns as $column => $definition) {
-            $exists = $m->fetch('SHOW COLUMNS FROM informes_cable LIKE ?', [$column]);
+            $exists = $m->fetch("SHOW COLUMNS FROM `$table` LIKE ?", [$column]);
             if (!$exists) {
-                $m->execSql("ALTER TABLE informes_cable ADD COLUMN $column $definition");
+                $m->execSql("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
             }
         }
     }
@@ -176,7 +185,7 @@ class InformeController extends Controller
         verify_csrf();
         $this->requirePermission('Informes de cable', 'eliminar');
         $m = new BaseCatalog;
-        $this->ensureInformeJsonColumns($m);
+        $this->ensureInformeSchema($m);
         try {
             if (!$m->find('informes_cable', (int)$id)) {
                 throw new \RuntimeException('Informe no encontrado.');
@@ -194,7 +203,7 @@ class InformeController extends Controller
     {
         $this->requirePermission('Informes de cable', 'imprimir');
         $m = new BaseCatalog;
-        $this->ensureInformeJsonColumns($m);
+        $this->ensureInformeSchema($m);
         $item = $m->fetch('SELECT i.*, c.numero_cable FROM informes_cable i JOIN cables c ON c.id=i.cable_id WHERE i.id=?', [$id]);
         if (!$item) {
             http_response_code(404);

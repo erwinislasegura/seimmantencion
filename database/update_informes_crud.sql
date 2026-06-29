@@ -35,5 +35,8 @@ CALL seim_add_column_if_missing('informes_cable', 'continuidad_final', 'JSON NUL
 CALL seim_add_column_if_missing('informes_cable', 'vlf', 'JSON NULL');
 CALL seim_add_column_if_missing('informes_cable', 'pruebas_finales', 'JSON NULL');
 CALL seim_add_column_if_missing('informes_cable', 'deleted_at', 'TIMESTAMP NULL');
+CALL seim_add_column_if_missing('informe_materiales', 'entrega_detalle_id', 'INT NULL');
+CALL seim_add_column_if_missing('informe_materiales', 'stock_usuario_antes', 'DECIMAL(12,2) NULL');
+CALL seim_add_column_if_missing('informe_materiales', 'stock_usuario_despues', 'DECIMAL(12,2) NULL');
 
 DROP PROCEDURE seim_add_column_if_missing;

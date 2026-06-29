@@ -38,6 +38,7 @@ $menuGroups = [
         'summary' => 'Administración',
         'icon' => '04',
         'items' => [
+            ['origenes-cable', 'Origen cable', 'Mantenedor de orígenes'],
             ['usuarios', 'Usuarios', 'Cuentas del sistema'],
             ['roles', 'Roles', 'Permisos y accesos'],
         ],

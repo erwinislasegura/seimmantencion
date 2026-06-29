@@ -102,3 +102,29 @@ document.addEventListener('DOMContentLoaded',()=>{
     form.addEventListener('input',ev=>{ev.target.classList?.remove('is-invalid-soft');},true);
   });
 });
+
+// Materiales usados en informes: permite múltiples usuarios y filtra materiales por usuario.
+document.addEventListener('DOMContentLoaded',()=>{
+  const wrap=document.getElementById('informeMaterialRows'), add=document.getElementById('addInformeMaterial');
+  if(!wrap||!add) return;
+  const first=wrap.querySelector('.informe-material-row');
+  if(!first) return;
+  const baseOptions=Array.from(first.querySelector('.informe-material-select').options).map(o=>({value:o.value,text:o.textContent,user:o.dataset.user||'',disponible:o.dataset.disponible||''}));
+  function fill(row){
+    const user=row.querySelector('.informe-material-user').value;
+    const select=row.querySelector('.informe-material-select');
+    const qty=row.querySelector('.informe-material-cantidad');
+    select.innerHTML='<option value="">Seleccione material...</option>';
+    baseOptions.filter(o=>o.value&&o.user===user).forEach(o=>{const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.text;opt.dataset.user=o.user;opt.dataset.disponible=o.disponible;select.append(opt);});
+    select.disabled=!user; qty.disabled=!user; qty.value=''; qty.removeAttribute('max');
+  }
+  function bind(row){
+    const user=row.querySelector('.informe-material-user'), select=row.querySelector('.informe-material-select'), qty=row.querySelector('.informe-material-cantidad'), remove=row.querySelector('.remove-informe-material');
+    user.addEventListener('change',()=>fill(row));
+    select.addEventListener('change',()=>{const max=select.selectedOptions[0]?.dataset.disponible||''; if(max) qty.max=max;});
+    remove.addEventListener('click',()=>{if(wrap.querySelectorAll('.informe-material-row').length>1) row.remove(); else row.querySelectorAll('select,input').forEach(el=>el.value=''); fill(row);});
+    fill(row);
+  }
+  bind(first);
+  add.addEventListener('click',()=>{const row=first.cloneNode(true);row.querySelectorAll('select,input').forEach(el=>el.value='');wrap.append(row);bind(row);});
+});

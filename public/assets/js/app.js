@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded',()=>{
-  document.querySelectorAll('.datatable').forEach(t=>new DataTable(t,{language:{url:'https://cdn.datatables.net/plug-ins/2.0.8/i18n/es-ES.json'},pageLength:10,compact:true,responsive:true}));
+  document.querySelectorAll('.datatable').forEach(t=>new DataTable(t,{language:{url:'https://cdn.datatables.net/plug-ins/2.0.8/i18n/es-ES.json',emptyTable:'Sin registros para mostrar',zeroRecords:'Sin registros para mostrar'},pageLength:10,compact:true,responsive:true}));
   const cs=document.getElementById('cableSelect');function loadCable(){if(!cs)return;const d=JSON.parse(cs.selectedOptions[0].dataset.json||'{}');document.getElementById('cableInfo').innerHTML=['calibre','marca','largo','tipo_enchufe','capacidad_aislacion'].map(k=>`<div><b>${k.replaceAll('_',' ')}</b><br>${d[k]||''}</div>`).join('')} if(cs){cs.addEventListener('change',loadCable);loadCable()}
   const gridColor='rgba(255,255,255,.08)', textColor='#d8deea';
   Chart.defaults.color=textColor; Chart.defaults.borderColor=gridColor;

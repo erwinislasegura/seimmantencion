@@ -1,4 +1,5 @@
 <?php
+<<<<<<< codex/corrige-error-de-token-csrf-lclnob
 $envAppUrl = $_ENV['APP_URL'] ?? '';
 if ($envAppUrl === '' && function_exists('getenv')) {
     $getenvAppUrl = getenv('APP_URL');
@@ -29,6 +30,15 @@ $requestPath = '/' . ltrim($requestPath, '/');
 if (($scriptDir === '' || $scriptDir === '/') && ($requestPath === '/public' || strpos($requestPath, '/public/') === 0)) {
     $scriptDir = '/public';
 }
+=======
+$envAppUrl = $_ENV['APP_URL'] ?? getenv('APP_URL') ?: '';
+
+$forwardedProto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwardedProto === 'https';
+$scheme = $isHttps ? 'https' : 'http';
+$host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+$scriptDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+>>>>>>> main
 $detectedBaseUrl = $scheme . '://' . $host . ($scriptDir === '' ? '' : $scriptDir);
 
 return [

@@ -110,21 +110,24 @@ document.addEventListener('DOMContentLoaded',()=>{
   const first=wrap.querySelector('.informe-material-row');
   if(!first) return;
   const baseOptions=Array.from(first.querySelector('.informe-material-select').options).map(o=>({value:o.value,text:o.textContent,user:o.dataset.user||'',disponible:o.dataset.disponible||''}));
-  function fill(row){
+  function fill(row,preserve=false){
     const user=row.querySelector('.informe-material-user').value;
     const select=row.querySelector('.informe-material-select');
     const qty=row.querySelector('.informe-material-cantidad');
+    const selected=preserve?select.value:'';
+    const quantity=preserve?qty.value:'';
     select.innerHTML='<option value="">Seleccione material...</option>';
-    baseOptions.filter(o=>o.value&&o.user===user).forEach(o=>{const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.text;opt.dataset.user=o.user;opt.dataset.disponible=o.disponible;select.append(opt);});
-    select.disabled=!user; qty.disabled=!user; qty.value=''; qty.removeAttribute('max');
+    baseOptions.filter(o=>o.value&&o.user===user).forEach(o=>{const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.text;opt.dataset.user=o.user;opt.dataset.disponible=o.disponible;if(o.value===selected)opt.selected=true;select.append(opt);});
+    select.disabled=!user; qty.disabled=!user; qty.value=quantity; qty.removeAttribute('max');
+    const max=select.selectedOptions[0]?.dataset.disponible||''; if(max) qty.max=max;
   }
   function bind(row){
     const user=row.querySelector('.informe-material-user'), select=row.querySelector('.informe-material-select'), qty=row.querySelector('.informe-material-cantidad'), remove=row.querySelector('.remove-informe-material');
     user.addEventListener('change',()=>fill(row));
     select.addEventListener('change',()=>{const max=select.selectedOptions[0]?.dataset.disponible||''; if(max) qty.max=max;});
     remove.addEventListener('click',()=>{if(wrap.querySelectorAll('.informe-material-row').length>1) row.remove(); else row.querySelectorAll('select,input').forEach(el=>el.value=''); fill(row);});
-    fill(row);
+    fill(row,true);
   }
-  bind(first);
+  wrap.querySelectorAll('.informe-material-row').forEach(bind);
   add.addEventListener('click',()=>{const row=first.cloneNode(true);row.querySelectorAll('select,input').forEach(el=>el.value='');wrap.append(row);bind(row);});
 });

@@ -10,6 +10,18 @@ if (!function_exists('str_contains')) {
 }
 function e(?string $v): string { return htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8'); }
 function url(string $path = ''): string { return App\Core\App::config('base_url') . '/' . ltrim($path, '/'); }
+function app_path(string $uri = ''): string {
+    $path = trim(parse_url($uri !== '' ? $uri : ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '', '/');
+    $base = trim(parse_url(App\Core\App::config('base_url'), PHP_URL_PATH) ?: '', '/');
+    $projectBase = trim(dirname('/' . $base), '/.');
+    foreach (array_filter([$base, $projectBase]) as $prefix) {
+        if ($path === $prefix) return '';
+        if (str_starts_with($path, $prefix . '/')) return trim(substr($path, strlen($prefix)), '/');
+    }
+    if ($path === 'public') return '';
+    if (str_starts_with($path, 'public/')) return trim(substr($path, 7), '/');
+    return $path;
+}
 function redirect(string $path): never { header('Location: ' . url($path)); exit; }
 function csrf_token(): string { $_SESSION['_csrf'] ??= bin2hex(random_bytes(32)); return $_SESSION['_csrf']; }
 function csrf_field(): string { return '<input type="hidden" name="_csrf" value="'.e(csrf_token()).'">'; }

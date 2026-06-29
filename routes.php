@@ -2,6 +2,10 @@
 use App\Controllers\{AuthController,DashboardController,CatalogController,MovimientoController,InformeController,ReporteController};
 $router->get('', [AuthController::class,'login']); $router->get('login',[AuthController::class,'login']); $router->post('login',[AuthController::class,'authenticate']); $router->get('logout',[AuthController::class,'logout']);
 $router->get('dashboard',[DashboardController::class,'index']);
+$router->get('dashboard/filtrar',[DashboardController::class,'filtrar']);
+$router->get('dashboard/graficos',[DashboardController::class,'obtenerDatosGraficosAjax']);
+$router->get('dashboard/alertas',[DashboardController::class,'alertas']);
+$router->get('dashboard/kpis',[DashboardController::class,'kpis']);
 $router->get('usuarios',[CatalogController::class,'usuarios']); $router->get('usuarios/crear',[CatalogController::class,'usuarios']); $router->get('usuarios/editar/{id}',[CatalogController::class,'usuarios']); $router->get('usuarios/ver/{id}',[CatalogController::class,'usuarios']);
 $router->get('roles',[CatalogController::class,'roles']); $router->get('roles/crear',[CatalogController::class,'roles']); $router->get('roles/editar/{id}',[CatalogController::class,'roles']);
 $router->get('materiales',[CatalogController::class,'materiales']); $router->get('materiales/crear',[CatalogController::class,'materialForm']); $router->get('materiales/editar/{id}',[CatalogController::class,'materialForm']); $router->get('materiales/ver/{id}',[CatalogController::class,'materialForm']); $router->post('materiales/guardar',[CatalogController::class,'saveMaterial']);

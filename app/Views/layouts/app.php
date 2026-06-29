@@ -3,23 +3,43 @@ $isLogin = str_contains($view, 'auth/');
 $currentPath = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
 $currentSection = explode('/', $currentPath)[0] ?: 'dashboard';
 $menuGroups = [
-    'Operación' => [
-        ['dashboard', 'Dashboard', 'Panel ejecutivo'],
-        ['entregas-materiales', 'Entregas', 'Salida de materiales'],
-        ['recepciones-materiales', 'Recepciones', 'Devoluciones'],
+    [
+        'label' => 'Operación',
+        'summary' => 'Trabajo diario',
+        'icon' => '01',
+        'items' => [
+            ['dashboard', 'Dashboard', 'Panel ejecutivo'],
+            ['entregas-materiales', 'Entregas', 'Salida de materiales'],
+            ['recepciones-materiales', 'Recepciones', 'Devoluciones'],
+        ],
     ],
-    'Inventario' => [
-        ['materiales', 'Materiales', 'Stock y fichas'],
-        ['cables', 'Cables', 'Activos mineros'],
-        ['marcas-cable', 'Marcas', 'Catálogo de marcas'],
+    [
+        'label' => 'Inventario',
+        'summary' => 'Materiales y activos',
+        'icon' => '02',
+        'items' => [
+            ['materiales', 'Materiales', 'Stock y fichas'],
+            ['cables', 'Cables', 'Activos mineros'],
+            ['marcas-cable', 'Marcas', 'Catálogo de marcas'],
+        ],
     ],
-    'Gestión técnica' => [
-        ['informes-cable', 'Informes', 'Reparación de cables'],
-        ['reportes', 'Reportes', 'Análisis y métricas'],
+    [
+        'label' => 'Gestión técnica',
+        'summary' => 'Informes y reportes',
+        'icon' => '03',
+        'items' => [
+            ['informes-cable', 'Informes', 'Reparación de cables'],
+            ['reportes', 'Reportes', 'Análisis y métricas'],
+        ],
     ],
-    'Configuración' => [
-        ['usuarios', 'Usuarios', 'Cuentas del sistema'],
-        ['roles', 'Roles', 'Permisos y accesos'],
+    [
+        'label' => 'Configuración',
+        'summary' => 'Administración',
+        'icon' => '04',
+        'items' => [
+            ['usuarios', 'Usuarios', 'Cuentas del sistema'],
+            ['roles', 'Roles', 'Permisos y accesos'],
+        ],
     ],
 ];
 ?>
@@ -40,16 +60,23 @@ $menuGroups = [
       <div class="brand-text"><span>SEIM</span><small>Energía</small></div>
     </div>
     <nav class="sidebar-nav" aria-label="Navegación principal">
-      <?php foreach ($menuGroups as $group => $items): ?>
-        <section class="nav-group">
-          <h2><?= e($group) ?></h2>
-          <?php foreach ($items as [$u, $t, $desc]): $active = $currentSection === $u; ?>
-            <a class="nav-link<?= $active ? ' active' : '' ?>" href="<?= url($u) ?>"<?= $active ? ' aria-current="page"' : '' ?>>
-              <span class="nav-dot"></span>
-              <span><strong><?= e($t) ?></strong><small><?= e($desc) ?></small></span>
-            </a>
-          <?php endforeach; ?>
-        </section>
+      <?php foreach ($menuGroups as $group): ?>
+        <?php $groupActive = in_array($currentSection, array_column($group['items'], 0), true); ?>
+        <details class="nav-group<?= $groupActive ? ' active' : '' ?>" <?= $groupActive ? 'open' : '' ?>>
+          <summary>
+            <span class="nav-index"><?= e($group['icon']) ?></span>
+            <span><strong><?= e($group['label']) ?></strong><small><?= e($group['summary']) ?></small></span>
+            <span class="nav-chevron">⌄</span>
+          </summary>
+          <div class="submenu">
+            <?php foreach ($group['items'] as [$u, $t, $desc]): $active = $currentSection === $u; ?>
+              <a class="nav-link<?= $active ? ' active' : '' ?>" href="<?= url($u) ?>"<?= $active ? ' aria-current="page"' : '' ?>>
+                <span class="nav-dot"></span>
+                <span><strong><?= e($t) ?></strong><small><?= e($desc) ?></small></span>
+              </a>
+            <?php endforeach; ?>
+          </div>
+        </details>
       <?php endforeach; ?>
     </nav>
   </aside>

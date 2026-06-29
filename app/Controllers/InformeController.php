@@ -161,10 +161,38 @@ class InformeController extends Controller
             'deleted_at' => 'TIMESTAMP NULL',
         ]);
         $this->ensureColumns($m, 'informe_materiales', [
+            'informe_id' => 'INT NULL',
+            'material_id' => 'INT NULL',
             'entrega_detalle_id' => 'INT NULL',
+            'cantidad_utilizada' => 'DECIMAL(12,2) NOT NULL DEFAULT 0',
             'stock_usuario_antes' => 'DECIMAL(12,2) NULL',
             'stock_usuario_despues' => 'DECIMAL(12,2) NULL',
         ]);
+        foreach (['informe_fallas_chaquetas', 'informe_fallas_enchufe', 'informe_lugares_falla', 'informe_causas_probables'] as $table) {
+            $this->ensureColumns($m, $table, [
+                'informe_id' => 'INT NULL',
+                'opcion' => 'VARCHAR(120) NULL',
+            ]);
+        }
+        $this->ensureColumns($m, 'informe_pruebas', [
+            'informe_id' => 'INT NULL',
+            'campo' => 'VARCHAR(80) NULL',
+            'item' => 'VARCHAR(120) NULL',
+            'realizada' => 'TINYINT(1) NOT NULL DEFAULT 0',
+            'con_falla' => 'TINYINT(1) NOT NULL DEFAULT 0',
+            'valor' => 'VARCHAR(80) NULL',
+            'unidad' => 'VARCHAR(40) NULL',
+        ]);
+    }
+
+
+    private function ensureInformeTables(BaseCatalog $m): void
+    {
+        foreach (['informe_fallas_chaquetas', 'informe_fallas_enchufe', 'informe_lugares_falla', 'informe_causas_probables'] as $table) {
+            $m->execSql("CREATE TABLE IF NOT EXISTS `$table`(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120))");
+        }
+        $m->execSql('CREATE TABLE IF NOT EXISTS informe_materiales(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,material_id INT NOT NULL,cantidad_utilizada DECIMAL(12,2) NOT NULL)');
+        $m->execSql('CREATE TABLE IF NOT EXISTS informe_pruebas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(80) NOT NULL,item VARCHAR(120) NOT NULL,realizada TINYINT(1) NOT NULL DEFAULT 0,con_falla TINYINT(1) NOT NULL DEFAULT 0,valor VARCHAR(80) NULL,unidad VARCHAR(40) NULL)');
     }
 
 
@@ -179,6 +207,10 @@ class InformeController extends Controller
 
     private function ensureColumns(BaseCatalog $m, string $table, array $columns): void
     {
+        $tableExists = $m->fetch('SHOW TABLES LIKE ?', [$table]);
+        if (!$tableExists) {
+            throw new \RuntimeException("La tabla requerida `$table` no existe en la base de datos.");
+        }
         foreach ($columns as $column => $definition) {
             $exists = $m->fetch("SHOW COLUMNS FROM `$table` LIKE ?", [$column]);
             if (!$exists) {

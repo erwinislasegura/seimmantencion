@@ -1,6 +1,12 @@
 DirectoryIndex index.php
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Si el hosting apunta al directorio raíz del proyecto, servir assets reales
+    # desde /public para que /assets/... y /uploads/... no pasen por el router PHP.
+    RewriteRule ^assets/(.*)$ public/assets/$1 [L,NC]
+    RewriteRule ^uploads/(.*)$ public/uploads/$1 [L,NC]
+
     RewriteRule ^$ public/index.php [L]
     RewriteRule ^index\.php$ public/index.php [L]
     RewriteCond %{REQUEST_FILENAME} !-f

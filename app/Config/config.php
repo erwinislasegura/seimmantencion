@@ -1,4 +1,36 @@
 <?php
+<<<<<<< codex/corrige-error-de-token-csrf-lclnob
+$envAppUrl = $_ENV['APP_URL'] ?? '';
+if ($envAppUrl === '' && function_exists('getenv')) {
+    $getenvAppUrl = getenv('APP_URL');
+    $envAppUrl = is_string($getenvAppUrl) ? $getenvAppUrl : '';
+}
+
+$forwardedProto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
+if (is_string($forwardedProto) && strpos($forwardedProto, ',') !== false) {
+    $forwardedProto = trim(explode(',', $forwardedProto)[0]);
+}
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwardedProto === 'https';
+$scheme = $isHttps ? 'https' : 'http';
+
+$host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
+if (is_string($host) && strpos($host, ',') !== false) {
+    $host = trim(explode(',', $host)[0]);
+}
+$host = is_string($host) && $host !== '' ? $host : 'localhost';
+
+$scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+$scriptDir = rtrim(dirname($scriptName), '/.');
+if (substr($scriptDir, -10) === '/index.php') {
+    $scriptDir = rtrim(dirname($scriptDir), '/.');
+}
+
+$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
+$requestPath = '/' . ltrim($requestPath, '/');
+if (($scriptDir === '' || $scriptDir === '/') && ($requestPath === '/public' || strpos($requestPath, '/public/') === 0)) {
+    $scriptDir = '/public';
+}
+=======
 $envAppUrl = $_ENV['APP_URL'] ?? getenv('APP_URL') ?: '';
 
 $forwardedProto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
@@ -6,6 +38,7 @@ $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwar
 $scheme = $isHttps ? 'https' : 'http';
 $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost';
 $scriptDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+>>>>>>> main
 $detectedBaseUrl = $scheme . '://' . $host . ($scriptDir === '' ? '' : $scriptDir);
 
 return [

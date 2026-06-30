@@ -27,6 +27,9 @@ class InformeController extends Controller
             http_response_code(404);
             exit('Informe no encontrado');
         }
+        if ($item) {
+            $item = $this->hydrateInformeForEdit($m, $item);
+        }
         $cables = $m->fetchAll('SELECT c.*, mc.nombre marca FROM cables c LEFT JOIN marcas_cable mc ON mc.id=c.marca_id WHERE c.deleted_at IS NULL');
         $supervisores = $m->all('usuarios', 'nombre');
         $origenes = $m->all('origenes_cable', 'nombre');
@@ -50,12 +53,16 @@ class InformeController extends Controller
         $db = \App\Core\App::db();
         $db->beginTransaction();
         try {
+            $this->sanitizeInformePost();
             $this->sanitizeRevisionCards();
-            $datosInforme = $this->buildInformeDataPayload($m);
             $jsonFields = ['fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'];
             foreach ($jsonFields as $f) {
-                $_POST[$f . '_raw'] = $_POST[$f] ?? [];
-                $_POST[$f] = json_encode($_POST[$f] ?? [], JSON_UNESCAPED_UNICODE);
+                $_POST[$f] = $_POST[$f] ?? [];
+                $_POST[$f . '_raw'] = $_POST[$f];
+            }
+            $datosInforme = $this->buildInformeDataPayload($m);
+            foreach ($jsonFields as $f) {
+                $_POST[$f] = json_encode($_POST[$f], JSON_UNESCAPED_UNICODE);
             }
 
             $cols = ['supervisor_id', 'fecha_recepcion_cable', 'fecha_entrega_cable', 'cable_id', 'origen_cable', 'estado_informe', 'rep_ing_mufas_termo', 'rep_ing_mufa_union', 'rep_ing_chaquetas', 'rep_sal_mufas_termo', 'rep_sal_mufa_union', 'rep_sal_chaquetas', 'estado_operativo', 'destino_cable', 'tipo_enchufe_entrega', 'largo_entrega', 'marca_entrega', 'capacidad_aislacion_entrega', 'fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales', 'observacion_final'];
@@ -96,6 +103,78 @@ class InformeController extends Controller
             flash('error', $e->getMessage());
             redirect($id ? 'informes-cable/editar/' . $id : 'informes-cable/crear');
         }
+    }
+
+
+
+    private function sanitizeInformePost(): void
+    {
+        $intFields = ['supervisor_id', 'cable_id'];
+        foreach ($intFields as $field) {
+            $value = filter_var($_POST[$field] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $_POST[$field] = $value === false ? null : $value;
+        }
+        if (empty($_POST['cable_id'])) {
+            throw new \RuntimeException('Debe seleccionar un cable válido para guardar el informe.');
+        }
+
+        foreach (['fecha_recepcion_cable', 'fecha_entrega_cable'] as $field) {
+            $_POST[$field] = trim((string)($_POST[$field] ?? '')) ?: null;
+        }
+
+        foreach (['rep_ing_mufas_termo', 'rep_ing_mufa_union', 'rep_ing_chaquetas', 'rep_sal_mufas_termo', 'rep_sal_mufa_union', 'rep_sal_chaquetas'] as $field) {
+            $_POST[$field] = max(0, (int)($_POST[$field] ?? 0));
+        }
+    }
+
+    private function hydrateInformeForEdit(BaseCatalog $m, array $item): array
+    {
+        $optionTables = [
+            'fallas_chaquetas' => 'informe_fallas_chaquetas',
+            'fallas_enchufe' => 'informe_fallas_enchufe',
+            'lugares_falla' => 'informe_lugares_falla',
+            'causas_probables' => 'informe_causas_probables',
+        ];
+        foreach ($optionTables as $field => $table) {
+            $rows = $m->fetchAll("SELECT opcion FROM `$table` WHERE informe_id=? ORDER BY id", [$item['id']]);
+            if ($rows || !$this->hasJsonContent($item[$field] ?? null)) {
+                $item[$field] = json_encode(array_column($rows, 'opcion'), JSON_UNESCAPED_UNICODE);
+            }
+        }
+
+        $testFields = ['pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'];
+        $storedTests = [];
+        foreach ($m->fetchAll('SELECT campo,item,realizada,con_falla,valor,unidad FROM informe_pruebas WHERE informe_id=? ORDER BY id', [$item['id']]) as $row) {
+            $storedTests[$row['campo']][$row['item']] = [
+                'realizada' => (bool)$row['realizada'],
+                'con_falla' => (bool)$row['con_falla'],
+                'valor' => $row['valor'] ?? '',
+                'unidad' => $row['unidad'] ?? '',
+            ];
+        }
+        foreach ($testFields as $field) {
+            if (isset($storedTests[$field]) || !$this->hasJsonContent($item[$field] ?? null)) {
+                $item[$field] = json_encode($storedTests[$field] ?? [], JSON_UNESCAPED_UNICODE);
+            }
+        }
+
+        foreach ($m->fetchAll('SELECT campo,valor FROM informe_datos WHERE informe_id=?', [$item['id']]) as $row) {
+            $campo = (string)$row['campo'];
+            if (array_key_exists($campo, $item) && ($item[$campo] === null || $item[$campo] === '')) {
+                $item[$campo] = $row['valor'];
+            }
+        }
+
+        return $item;
+    }
+
+    private function hasJsonContent($value): bool
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return false;
+        }
+        $decoded = json_decode($value, true);
+        return is_array($decoded) && $decoded !== [];
     }
 
     private function sanitizeRevisionCards(): void

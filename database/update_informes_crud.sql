@@ -94,4 +94,9 @@ CALL seim_add_column_if_missing('informe_materiales', 'entrega_detalle_id', 'INT
 CALL seim_add_column_if_missing('informe_materiales', 'stock_usuario_antes', 'DECIMAL(12,2) NULL');
 CALL seim_add_column_if_missing('informe_materiales', 'stock_usuario_despues', 'DECIMAL(12,2) NULL');
 
+CREATE TABLE IF NOT EXISTS informe_fallas_chaquetas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120));
+CREATE TABLE IF NOT EXISTS informe_fallas_enchufe(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120));
+CREATE TABLE IF NOT EXISTS informe_lugares_falla(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120));
+CREATE TABLE IF NOT EXISTS informe_causas_probables(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120));
+
 DROP PROCEDURE seim_add_column_if_missing;

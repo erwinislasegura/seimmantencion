@@ -144,3 +144,52 @@ document.addEventListener('DOMContentLoaded',()=>{
     sync();
   });
 });
+
+// Confirmación detallada antes de guardar informes: muestra qué datos se enviarán
+// y bloquea el guardado si falta un campo obligatorio del formulario.
+document.addEventListener('DOMContentLoaded',()=>{
+  const form=document.getElementById('informeCableForm');
+  const modalEl=document.getElementById('confirmInformeModal');
+  const summary=document.getElementById('confirmInformeSummary');
+  const errors=document.getElementById('confirmInformeErrors');
+  const confirmBtn=document.getElementById('confirmInformeSubmit');
+  if(!form||!modalEl||!summary||!confirmBtn) return;
+  const modal=window.bootstrap?new bootstrap.Modal(modalEl):null;
+  const labels={
+    supervisor_id:'Supervisor',fecha_recepcion_cable:'Fecha recepción',fecha_entrega_cable:'Fecha entrega',cable_id:'Cable',estado_informe:'Estado informe',origen_cable:'Origen cable',
+    rep_ing_mufas_termo:'Ingreso · Mufas termocontraíbles',rep_ing_mufa_union:'Ingreso · Mufa de unión',rep_ing_chaquetas:'Ingreso · Chaquetas',rep_sal_mufas_termo:'Salida · Mufas termocontraíbles',rep_sal_mufa_union:'Salida · Mufa de unión',rep_sal_chaquetas:'Salida · Chaquetas',
+    estado_operativo:'Estado operativo',destino_cable:'Destino',tipo_enchufe_entrega:'Tipo enchufe entrega',largo_entrega:'Largo entrega',marca_entrega:'Marca entrega',capacidad_aislacion_entrega:'Capacidad aislación entrega',
+    fallas_chaquetas:'Falla chaquetas/mufas',fallas_enchufe:'Falla enchufe',lugares_falla:'Lugar de falla',causas_probables:'Causa probable',material_detalle_id:'Materiales usados',material_cantidad:'Cantidades usadas',observacion_final:'Observación final'
+  };
+  const sections=[['Cabecera',['supervisor_id','fecha_recepcion_cable','fecha_entrega_cable','cable_id','estado_informe','origen_cable']],['Reparaciones',['rep_ing_mufas_termo','rep_ing_mufa_union','rep_ing_chaquetas','rep_sal_mufas_termo','rep_sal_mufa_union','rep_sal_chaquetas']],['Entrega',['estado_operativo','destino_cable','tipo_enchufe_entrega','largo_entrega','marca_entrega','capacidad_aislacion_entrega']],['Diagnóstico',['fallas_chaquetas','fallas_enchufe','lugares_falla','causas_probables']],['Materiales y cierre',['material_detalle_id','material_cantidad','observacion_final']]];
+  const cleanName=name=>name.replace(/\[.*$/,'');
+  const fieldText=el=>{
+    if(el.tagName==='SELECT') return Array.from(el.selectedOptions).map(o=>o.textContent.trim()).filter(Boolean).join(', ');
+    if(el.type==='checkbox') return el.checked?((el.closest('label')?.textContent||el.value).trim()):'';
+    return (el.value||'').trim();
+  };
+  const valuesFor=base=>Array.from(form.elements).filter(el=>el.name&&cleanName(el.name)===base&&!['hidden','submit','button'].includes(el.type)).map(fieldText).filter(Boolean);
+  function renderSummary(){
+    const missing=[];
+    form.querySelectorAll('[required]').forEach(el=>{if(!el.value) missing.push((el.closest('div')?.querySelector('label')?.textContent||el.name).trim());});
+    errors.classList.toggle('d-none',missing.length===0);
+    errors.innerHTML=missing.length?`Faltan campos obligatorios: <strong>${missing.join(', ')}</strong>`:'';
+    summary.innerHTML='';
+    sections.forEach(([title,fields])=>{
+      const h=document.createElement('div'); h.className='confirm-section'; h.textContent=title; summary.append(h);
+      fields.forEach(name=>{
+        const vals=valuesFor(name), item=document.createElement('div'); item.className=`confirm-item ${vals.length?'':'is-empty'}`;
+        item.innerHTML=`<b>${labels[name]||name}</b><span>${vals.length?vals.join(', '):'Sin dato'}</span>`; summary.append(item);
+      });
+    });
+    return missing.length===0;
+  }
+  form.addEventListener('submit',ev=>{
+    if(form.dataset.confirmed==='1') return;
+    ev.preventDefault(); ev.stopImmediatePropagation();
+    if(!form.checkValidity()){form.reportValidity(); return;}
+    const ok=renderSummary(); confirmBtn.disabled=!ok;
+    if(modal) modal.show(); else if(ok&&window.confirm('¿Confirma guardar el informe?')){form.dataset.confirmed='1';form.requestSubmit();}
+  },true);
+  confirmBtn.addEventListener('click',()=>{form.dataset.confirmed='1'; if(modal) modal.hide(); form.requestSubmit();});
+});

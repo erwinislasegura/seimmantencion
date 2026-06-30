@@ -471,13 +471,27 @@ class InformeController extends Controller
             if ($expected === null || !array_key_exists($column, $row)) {
                 continue;
             }
-            if ((string)$row[$column] !== (string)$expected) {
+            if (!$this->informePersistedValueMatches($column, $row[$column], $expected)) {
                 throw new \RuntimeException("El dato `$column` no quedó guardado correctamente en informes_cable.");
             }
         }
         if (!$m->fetch('SELECT id FROM informe_datos WHERE informe_id=? LIMIT 1', [$informeId])) {
             throw new \RuntimeException('No se pudo confirmar el guardado de los datos de trazabilidad del informe.');
         }
+    }
+
+
+    private function informePersistedValueMatches(string $column, $stored, $expected): bool
+    {
+        $jsonColumns = ['fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'];
+        if (in_array($column, $jsonColumns, true)) {
+            $storedDecoded = is_string($stored) ? json_decode($stored, true) : null;
+            $expectedDecoded = is_string($expected) ? json_decode($expected, true) : null;
+            if (is_array($storedDecoded) && is_array($expectedDecoded)) {
+                return $storedDecoded == $expectedDecoded;
+            }
+        }
+        return (string)$stored === (string)$expected;
     }
 
     public function delete($id): void

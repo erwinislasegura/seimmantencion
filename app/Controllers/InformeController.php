@@ -27,6 +27,9 @@ class InformeController extends Controller
             http_response_code(404);
             exit('Informe no encontrado');
         }
+        if ($item) {
+            $item = $this->hydrateInformeForEdit($m, $item);
+        }
         $cables = $m->fetchAll('SELECT c.*, mc.nombre marca FROM cables c LEFT JOIN marcas_cable mc ON mc.id=c.marca_id WHERE c.deleted_at IS NULL');
         $supervisores = $m->all('usuarios', 'nombre');
         $origenes = $m->all('origenes_cable', 'nombre');
@@ -50,16 +53,22 @@ class InformeController extends Controller
         $db = \App\Core\App::db();
         $db->beginTransaction();
         try {
+            $this->sanitizeInformePost();
+            $this->populateRecepcionCableSnapshot($m);
             $this->sanitizeRevisionCards();
-            $datosInforme = $this->buildInformeDataPayload($m);
             $jsonFields = ['fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'];
             foreach ($jsonFields as $f) {
-                $_POST[$f . '_raw'] = $_POST[$f] ?? [];
-                $_POST[$f] = json_encode($_POST[$f] ?? [], JSON_UNESCAPED_UNICODE);
+                $_POST[$f] = $_POST[$f] ?? [];
+                $_POST[$f . '_raw'] = $_POST[$f];
+            }
+            $datosInforme = $this->buildInformeDataPayload($m);
+            foreach ($jsonFields as $f) {
+                $_POST[$f] = json_encode($_POST[$f], JSON_UNESCAPED_UNICODE);
             }
 
-            $cols = ['supervisor_id', 'fecha_recepcion_cable', 'fecha_entrega_cable', 'cable_id', 'origen_cable', 'estado_informe', 'rep_ing_mufas_termo', 'rep_ing_mufa_union', 'rep_ing_chaquetas', 'rep_sal_mufas_termo', 'rep_sal_mufa_union', 'rep_sal_chaquetas', 'estado_operativo', 'destino_cable', 'tipo_enchufe_entrega', 'largo_entrega', 'marca_entrega', 'capacidad_aislacion_entrega', 'fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales', 'observacion_final'];
+            $cols = ['supervisor_id', 'fecha_recepcion_cable', 'fecha_entrega_cable', 'cable_id', 'origen_cable', 'recepcion_numero_cable', 'recepcion_calibre', 'recepcion_tipo_enchufe', 'recepcion_aislacion', 'recepcion_largo', 'recepcion_capacidad_aislacion', 'recepcion_marca_cable', 'estado_informe', 'rep_ing_mufas_termo', 'rep_ing_mufa_union', 'rep_ing_chaquetas', 'rep_sal_mufas_termo', 'rep_sal_mufa_union', 'rep_sal_chaquetas', 'estado_operativo', 'destino_cable', 'tipo_enchufe_entrega', 'largo_entrega', 'marca_entrega', 'capacidad_aislacion_entrega', 'fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales', 'observacion_final'];
             $p = array_map(fn($c) => $_POST[$c] ?? null, $cols);
+            $mainPayload = array_combine($cols, $p) ?: [];
 
             if ($id !== null) {
                 if (!$m->find('informes_cable', $id)) {
@@ -87,6 +96,7 @@ class InformeController extends Controller
             $this->guardarOpcionesInforme($m, $id);
             $this->guardarPruebasInforme($m, $id);
             $this->guardarMaterialesUsados($m, $id);
+            $this->assertInformePersisted($m, $id, $mainPayload);
             $m->audit('Guardar', 'Informes de cable', $id, 'Informe guardado');
             $db->commit();
             flash('success', 'Informe guardado.');
@@ -96,6 +106,108 @@ class InformeController extends Controller
             flash('error', $e->getMessage());
             redirect($id ? 'informes-cable/editar/' . $id : 'informes-cable/crear');
         }
+    }
+
+
+
+
+    private function populateRecepcionCableSnapshot(BaseCatalog $m): void
+    {
+        $cableId = filter_var($_POST['cable_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($cableId === false) {
+            return;
+        }
+        $cable = $m->fetch('SELECT c.numero_cable,c.calibre,c.tipo_enchufe,c.aislacion,c.largo,c.capacidad_aislacion,mc.nombre marca FROM cables c LEFT JOIN marcas_cable mc ON mc.id=c.marca_id WHERE c.id=?', [$cableId]);
+        if (!$cable) {
+            return;
+        }
+        $_POST['recepcion_numero_cable'] = $cable['numero_cable'] ?? null;
+        $_POST['recepcion_calibre'] = $cable['calibre'] ?? null;
+        $_POST['recepcion_tipo_enchufe'] = $cable['tipo_enchufe'] ?? null;
+        $_POST['recepcion_aislacion'] = $cable['aislacion'] ?? null;
+        $_POST['recepcion_largo'] = isset($cable['largo']) ? (string)$cable['largo'] : null;
+        $_POST['recepcion_capacidad_aislacion'] = $cable['capacidad_aislacion'] ?? null;
+        $_POST['recepcion_marca_cable'] = $cable['marca'] ?? null;
+    }
+
+    private function sanitizeInformePost(): void
+    {
+        $intFields = ['supervisor_id', 'cable_id'];
+        foreach ($intFields as $field) {
+            $value = filter_var($_POST[$field] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $_POST[$field] = $value === false ? null : $value;
+        }
+        if (empty($_POST['cable_id'])) {
+            throw new \RuntimeException('Debe seleccionar un cable válido para guardar el informe.');
+        }
+
+        foreach (['fecha_recepcion_cable', 'fecha_entrega_cable'] as $field) {
+            $_POST[$field] = trim((string)($_POST[$field] ?? '')) ?: null;
+        }
+
+        foreach (['rep_ing_mufas_termo', 'rep_ing_mufa_union', 'rep_ing_chaquetas', 'rep_sal_mufas_termo', 'rep_sal_mufa_union', 'rep_sal_chaquetas'] as $field) {
+            $_POST[$field] = max(0, (int)($_POST[$field] ?? 0));
+        }
+    }
+
+    private function hydrateInformeForEdit(BaseCatalog $m, array $item): array
+    {
+        $optionTables = [
+            'fallas_chaquetas' => 'informe_fallas_chaquetas',
+            'fallas_enchufe' => 'informe_fallas_enchufe',
+            'lugares_falla' => 'informe_lugares_falla',
+            'causas_probables' => 'informe_causas_probables',
+        ];
+        foreach ($optionTables as $field => $table) {
+            $rows = $m->fetchAll("SELECT opcion FROM `$table` WHERE informe_id=? ORDER BY id", [$item['id']]);
+            if ($rows || !$this->hasJsonContent($item[$field] ?? null)) {
+                $item[$field] = json_encode(array_column($rows, 'opcion'), JSON_UNESCAPED_UNICODE);
+            }
+        }
+
+        $testFields = ['pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'];
+        $storedTests = [];
+        foreach ($m->fetchAll('SELECT campo,item,realizada,con_falla,valor,unidad FROM informe_pruebas WHERE informe_id=? ORDER BY id', [$item['id']]) as $row) {
+            $storedTests[$row['campo']][$row['item']] = [
+                'realizada' => (bool)$row['realizada'],
+                'con_falla' => (bool)$row['con_falla'],
+                'valor' => $row['valor'] ?? '',
+                'unidad' => $row['unidad'] ?? '',
+            ];
+        }
+        foreach ($testFields as $field) {
+            if (isset($storedTests[$field]) || !$this->hasJsonContent($item[$field] ?? null)) {
+                $item[$field] = json_encode($storedTests[$field] ?? [], JSON_UNESCAPED_UNICODE);
+            }
+        }
+
+        $recepcionFallback = [
+            'recepcion_cable.numero_cable' => 'recepcion_numero_cable',
+            'recepcion_cable.calibre' => 'recepcion_calibre',
+            'recepcion_cable.tipo_enchufe' => 'recepcion_tipo_enchufe',
+            'recepcion_cable.aislacion' => 'recepcion_aislacion',
+            'recepcion_cable.largo' => 'recepcion_largo',
+            'recepcion_cable.capacidad_aislacion' => 'recepcion_capacidad_aislacion',
+            'recepcion_cable.marca' => 'recepcion_marca_cable',
+        ];
+        foreach ($m->fetchAll('SELECT campo,valor FROM informe_datos WHERE informe_id=?', [$item['id']]) as $row) {
+            $campo = (string)$row['campo'];
+            $target = $recepcionFallback[$campo] ?? $campo;
+            if (array_key_exists($target, $item) && ($item[$target] === null || $item[$target] === '')) {
+                $item[$target] = $row['valor'];
+            }
+        }
+
+        return $item;
+    }
+
+    private function hasJsonContent($value): bool
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return false;
+        }
+        $decoded = json_decode($value, true);
+        return is_array($decoded) && $decoded !== [];
     }
 
     private function sanitizeRevisionCards(): void
@@ -124,7 +236,15 @@ class InformeController extends Controller
             'supervisor_id' => 'INT NULL',
             'fecha_recepcion_cable' => 'DATE NULL',
             'fecha_entrega_cable' => 'DATE NULL',
+            'cable_id' => 'INT NULL',
             'origen_cable' => 'VARCHAR(150) NULL',
+            'recepcion_numero_cable' => 'VARCHAR(80) NULL',
+            'recepcion_calibre' => 'VARCHAR(80) NULL',
+            'recepcion_tipo_enchufe' => 'VARCHAR(120) NULL',
+            'recepcion_aislacion' => 'VARCHAR(120) NULL',
+            'recepcion_largo' => 'VARCHAR(80) NULL',
+            'recepcion_capacidad_aislacion' => 'VARCHAR(120) NULL',
+            'recepcion_marca_cable' => 'VARCHAR(100) NULL',
             'estado_informe' => "ENUM('borrador','finalizado','anulado') DEFAULT 'borrador'",
             'rep_ing_mufas_termo' => 'INT DEFAULT 0',
             'rep_ing_mufa_union' => 'INT DEFAULT 0',
@@ -187,6 +307,7 @@ class InformeController extends Controller
 
     private function ensureInformeTables(BaseCatalog $m): void
     {
+        $m->execSql("CREATE TABLE IF NOT EXISTS informes_cable(id INT AUTO_INCREMENT PRIMARY KEY,supervisor_id INT NULL,fecha_recepcion_cable DATE NULL,fecha_entrega_cable DATE NULL,cable_id INT NULL,origen_cable VARCHAR(150) NULL,recepcion_numero_cable VARCHAR(80) NULL,recepcion_calibre VARCHAR(80) NULL,recepcion_tipo_enchufe VARCHAR(120) NULL,recepcion_aislacion VARCHAR(120) NULL,recepcion_largo VARCHAR(80) NULL,recepcion_capacidad_aislacion VARCHAR(120) NULL,recepcion_marca_cable VARCHAR(100) NULL,estado_informe ENUM('borrador','finalizado','anulado') DEFAULT 'borrador',rep_ing_mufas_termo INT DEFAULT 0,rep_ing_mufa_union INT DEFAULT 0,rep_ing_chaquetas INT DEFAULT 0,rep_sal_mufas_termo INT DEFAULT 0,rep_sal_mufa_union INT DEFAULT 0,rep_sal_chaquetas INT DEFAULT 0,estado_operativo VARCHAR(40) NULL,destino_cable VARCHAR(120) NULL,tipo_enchufe_entrega VARCHAR(120) NULL,largo_entrega VARCHAR(80) NULL,marca_entrega VARCHAR(100) NULL,capacidad_aislacion_entrega VARCHAR(120) NULL,fallas_chaquetas LONGTEXT NULL,fallas_enchufe LONGTEXT NULL,lugares_falla LONGTEXT NULL,causas_probables LONGTEXT NULL,pruebas_continuidad LONGTEXT NULL,prueba_ez_thump LONGTEXT NULL,continuidad_final LONGTEXT NULL,vlf LONGTEXT NULL,pruebas_finales LONGTEXT NULL,observacion_final TEXT NULL,creado_por INT NULL,actualizado_por INT NULL,created_at TIMESTAMP NULL,updated_at TIMESTAMP NULL,deleted_at TIMESTAMP NULL)");
         foreach (['informe_fallas_chaquetas', 'informe_fallas_enchufe', 'informe_lugares_falla', 'informe_causas_probables'] as $table) {
             $m->execSql("CREATE TABLE IF NOT EXISTS `$table`(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120))");
         }
@@ -336,6 +457,26 @@ class InformeController extends Controller
             $m->execSql('UPDATE entrega_material_detalle SET cantidad_disponible=? WHERE id=?', [$despues, $detalleId]);
             $m->execSql('INSERT INTO informe_materiales(informe_id,material_id,entrega_detalle_id,cantidad_utilizada,stock_usuario_antes,stock_usuario_despues) VALUES(?,?,?,?,?,?)', [$informeId, $det['material_id'], $detalleId, $cantidad, $antes, $despues]);
             $m->execSql('UPDATE entregas_materiales e SET estado=IF((SELECT COALESCE(SUM(cantidad_disponible),0) FROM entrega_material_detalle WHERE entrega_id=e.id)<=0,"cerrada","activa"),updated_at=NOW() WHERE e.id=?', [$det['entrega_id']]);
+        }
+    }
+
+
+    private function assertInformePersisted(BaseCatalog $m, int $informeId, array $expectedMain = []): void
+    {
+        $row = $m->fetch('SELECT * FROM informes_cable WHERE id=?', [$informeId]);
+        if (!$row) {
+            throw new \RuntimeException('No se pudo confirmar el guardado en la tabla informes_cable.');
+        }
+        foreach ($expectedMain as $column => $expected) {
+            if ($expected === null || !array_key_exists($column, $row)) {
+                continue;
+            }
+            if ((string)$row[$column] !== (string)$expected) {
+                throw new \RuntimeException("El dato `$column` no quedó guardado correctamente en informes_cable.");
+            }
+        }
+        if (!$m->fetch('SELECT id FROM informe_datos WHERE informe_id=? LIMIT 1', [$informeId])) {
+            throw new \RuntimeException('No se pudo confirmar el guardado de los datos de trazabilidad del informe.');
         }
     }
 

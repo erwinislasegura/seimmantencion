@@ -29,6 +29,7 @@ END//
 
 DELIMITER ;
 
+CREATE TABLE IF NOT EXISTS informes_cable(id INT AUTO_INCREMENT PRIMARY KEY,supervisor_id INT NULL,fecha_recepcion_cable DATE NULL,fecha_entrega_cable DATE NULL,cable_id INT NULL,origen_cable VARCHAR(150) NULL,recepcion_numero_cable VARCHAR(80) NULL,recepcion_calibre VARCHAR(80) NULL,recepcion_tipo_enchufe VARCHAR(120) NULL,recepcion_aislacion VARCHAR(120) NULL,recepcion_largo VARCHAR(80) NULL,recepcion_capacidad_aislacion VARCHAR(120) NULL,recepcion_marca_cable VARCHAR(100) NULL,estado_informe ENUM('borrador','finalizado','anulado') DEFAULT 'borrador',rep_ing_mufas_termo INT DEFAULT 0,rep_ing_mufa_union INT DEFAULT 0,rep_ing_chaquetas INT DEFAULT 0,rep_sal_mufas_termo INT DEFAULT 0,rep_sal_mufa_union INT DEFAULT 0,rep_sal_chaquetas INT DEFAULT 0,estado_operativo VARCHAR(40) NULL,destino_cable VARCHAR(120) NULL,tipo_enchufe_entrega VARCHAR(120) NULL,largo_entrega VARCHAR(80) NULL,marca_entrega VARCHAR(100) NULL,capacidad_aislacion_entrega VARCHAR(120) NULL,fallas_chaquetas LONGTEXT NULL,fallas_enchufe LONGTEXT NULL,lugares_falla LONGTEXT NULL,causas_probables LONGTEXT NULL,pruebas_continuidad LONGTEXT NULL,prueba_ez_thump LONGTEXT NULL,continuidad_final LONGTEXT NULL,vlf LONGTEXT NULL,pruebas_finales LONGTEXT NULL,observacion_final TEXT NULL,creado_por INT NULL,actualizado_por INT NULL,created_at TIMESTAMP NULL,updated_at TIMESTAMP NULL,deleted_at TIMESTAMP NULL);
 CREATE TABLE IF NOT EXISTS informe_materiales(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,material_id INT NOT NULL,cantidad_utilizada DECIMAL(12,2) NOT NULL);
 CREATE TABLE IF NOT EXISTS informe_pruebas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(80) NOT NULL,item VARCHAR(120) NOT NULL,realizada TINYINT(1) NOT NULL DEFAULT 0,con_falla TINYINT(1) NOT NULL DEFAULT 0,valor VARCHAR(80) NULL,unidad VARCHAR(40) NULL);
 CREATE TABLE IF NOT EXISTS informe_datos(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(190) NOT NULL,valor LONGTEXT NULL);
@@ -40,7 +41,15 @@ CREATE TABLE IF NOT EXISTS informe_causas_probables(id INT AUTO_INCREMENT PRIMAR
 CALL seim_add_column_if_missing('informes_cable', 'supervisor_id', 'INT NULL');
 CALL seim_add_column_if_missing('informes_cable', 'fecha_recepcion_cable', 'DATE NULL');
 CALL seim_add_column_if_missing('informes_cable', 'fecha_entrega_cable', 'DATE NULL');
+CALL seim_add_column_if_missing('informes_cable', 'cable_id', 'INT NULL');
 CALL seim_add_column_if_missing('informes_cable', 'origen_cable', 'VARCHAR(150) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'recepcion_numero_cable', 'VARCHAR(80) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'recepcion_calibre', 'VARCHAR(80) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'recepcion_tipo_enchufe', 'VARCHAR(120) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'recepcion_aislacion', 'VARCHAR(120) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'recepcion_largo', 'VARCHAR(80) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'recepcion_capacidad_aislacion', 'VARCHAR(120) NULL');
+CALL seim_add_column_if_missing('informes_cable', 'recepcion_marca_cable', 'VARCHAR(100) NULL');
 CALL seim_add_column_if_missing('informes_cable', 'estado_informe', 'ENUM(''borrador'',''finalizado'',''anulado'') DEFAULT ''borrador''');
 CALL seim_add_column_if_missing('informes_cable', 'rep_ing_mufas_termo', 'INT DEFAULT 0');
 CALL seim_add_column_if_missing('informes_cable', 'rep_ing_mufa_union', 'INT DEFAULT 0');

@@ -51,8 +51,10 @@ class InformeController extends Controller
         $db->beginTransaction();
         try {
             $this->sanitizeRevisionCards();
+            $datosInforme = $this->buildInformeDataPayload($m);
             $jsonFields = ['fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'];
             foreach ($jsonFields as $f) {
+                $_POST[$f . '_raw'] = $_POST[$f] ?? [];
                 $_POST[$f] = json_encode($_POST[$f] ?? [], JSON_UNESCAPED_UNICODE);
             }
 
@@ -81,6 +83,9 @@ class InformeController extends Controller
                 $id = (int)$db->lastInsertId();
             }
 
+            $this->guardarDatosInforme($m, $id, $datosInforme);
+            $this->guardarOpcionesInforme($m, $id);
+            $this->guardarPruebasInforme($m, $id);
             $this->guardarMaterialesUsados($m, $id);
             $m->audit('Guardar', 'Informes de cable', $id, 'Informe guardado');
             $db->commit();
@@ -106,42 +111,96 @@ class InformeController extends Controller
                     continue;
                 }
                 $isOn = !empty($values['realizada']);
-                if (!$isOn) {
-                    unset($_POST[$field][$item]['con_falla']);
-                    if ($field !== 'pruebas_finales') {
-                        unset($_POST[$field][$item]);
-                    }
-                    continue;
-                }
-                $_POST[$field][$item]['realizada'] = '1';
-                if (!empty($values['con_falla'])) {
-                    $_POST[$field][$item]['con_falla'] = '1';
-                } else {
-                    unset($_POST[$field][$item]['con_falla']);
-                }
+                $_POST[$field][$item]['realizada'] = $isOn;
+                $_POST[$field][$item]['con_falla'] = $isOn && !empty($values['con_falla']);
             }
         }
     }
 
     private function ensureInformeSchema(BaseCatalog $m): void
     {
+        $this->ensureInformeTables($m);
         $this->ensureColumns($m, 'informes_cable', [
-            'pruebas_continuidad' => 'JSON NULL',
-            'prueba_ez_thump' => 'JSON NULL',
-            'continuidad_final' => 'JSON NULL',
-            'vlf' => 'JSON NULL',
-            'pruebas_finales' => 'JSON NULL',
+            'supervisor_id' => 'INT NULL',
+            'fecha_recepcion_cable' => 'DATE NULL',
+            'fecha_entrega_cable' => 'DATE NULL',
+            'origen_cable' => 'VARCHAR(150) NULL',
+            'estado_informe' => "ENUM('borrador','finalizado','anulado') DEFAULT 'borrador'",
+            'rep_ing_mufas_termo' => 'INT DEFAULT 0',
+            'rep_ing_mufa_union' => 'INT DEFAULT 0',
+            'rep_ing_chaquetas' => 'INT DEFAULT 0',
+            'rep_sal_mufas_termo' => 'INT DEFAULT 0',
+            'rep_sal_mufa_union' => 'INT DEFAULT 0',
+            'rep_sal_chaquetas' => 'INT DEFAULT 0',
+            'estado_operativo' => 'VARCHAR(40) NULL',
+            'destino_cable' => 'VARCHAR(120) NULL',
+            'tipo_enchufe_entrega' => 'VARCHAR(120) NULL',
+            'largo_entrega' => 'VARCHAR(80) NULL',
+            'marca_entrega' => 'VARCHAR(100) NULL',
+            'capacidad_aislacion_entrega' => 'VARCHAR(120) NULL',
+            'fallas_chaquetas' => 'LONGTEXT NULL',
+            'fallas_enchufe' => 'LONGTEXT NULL',
+            'lugares_falla' => 'LONGTEXT NULL',
+            'causas_probables' => 'LONGTEXT NULL',
+            'pruebas_continuidad' => 'LONGTEXT NULL',
+            'prueba_ez_thump' => 'LONGTEXT NULL',
+            'continuidad_final' => 'LONGTEXT NULL',
+            'vlf' => 'LONGTEXT NULL',
+            'pruebas_finales' => 'LONGTEXT NULL',
+            'observacion_final' => 'TEXT NULL',
+            'creado_por' => 'INT NULL',
+            'actualizado_por' => 'INT NULL',
+            'created_at' => 'TIMESTAMP NULL',
+            'updated_at' => 'TIMESTAMP NULL',
             'deleted_at' => 'TIMESTAMP NULL',
         ]);
         $this->ensureColumns($m, 'informe_materiales', [
+            'informe_id' => 'INT NULL',
+            'material_id' => 'INT NULL',
             'entrega_detalle_id' => 'INT NULL',
+            'cantidad_utilizada' => 'DECIMAL(12,2) NOT NULL DEFAULT 0',
             'stock_usuario_antes' => 'DECIMAL(12,2) NULL',
             'stock_usuario_despues' => 'DECIMAL(12,2) NULL',
         ]);
+        foreach (['informe_fallas_chaquetas', 'informe_fallas_enchufe', 'informe_lugares_falla', 'informe_causas_probables'] as $table) {
+            $this->ensureColumns($m, $table, [
+                'informe_id' => 'INT NULL',
+                'opcion' => 'VARCHAR(120) NULL',
+            ]);
+        }
+        $this->ensureColumns($m, 'informe_pruebas', [
+            'informe_id' => 'INT NULL',
+            'campo' => 'VARCHAR(80) NULL',
+            'item' => 'VARCHAR(120) NULL',
+            'realizada' => 'TINYINT(1) NOT NULL DEFAULT 0',
+            'con_falla' => 'TINYINT(1) NOT NULL DEFAULT 0',
+            'valor' => 'VARCHAR(80) NULL',
+            'unidad' => 'VARCHAR(40) NULL',
+        ]);
+        $this->ensureColumns($m, 'informe_datos', [
+            'informe_id' => 'INT NULL',
+            'campo' => 'VARCHAR(190) NULL',
+            'valor' => 'LONGTEXT NULL',
+        ]);
+    }
+
+
+    private function ensureInformeTables(BaseCatalog $m): void
+    {
+        foreach (['informe_fallas_chaquetas', 'informe_fallas_enchufe', 'informe_lugares_falla', 'informe_causas_probables'] as $table) {
+            $m->execSql("CREATE TABLE IF NOT EXISTS `$table`(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120))");
+        }
+        $m->execSql('CREATE TABLE IF NOT EXISTS informe_materiales(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,material_id INT NOT NULL,cantidad_utilizada DECIMAL(12,2) NOT NULL)');
+        $m->execSql('CREATE TABLE IF NOT EXISTS informe_pruebas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(80) NOT NULL,item VARCHAR(120) NOT NULL,realizada TINYINT(1) NOT NULL DEFAULT 0,con_falla TINYINT(1) NOT NULL DEFAULT 0,valor VARCHAR(80) NULL,unidad VARCHAR(40) NULL)');
+        $m->execSql('CREATE TABLE IF NOT EXISTS informe_datos(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(190) NOT NULL,valor LONGTEXT NULL)');
     }
 
     private function ensureColumns(BaseCatalog $m, string $table, array $columns): void
     {
+        $tableExists = $m->fetch('SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$table]);
+        if (!$tableExists) {
+            throw new \RuntimeException("La tabla requerida `$table` no existe en la base de datos.");
+        }
         foreach ($columns as $column => $definition) {
             $exists = $m->fetch("SHOW COLUMNS FROM `$table` LIKE ?", [$column]);
             if (!$exists) {
@@ -161,6 +220,106 @@ class InformeController extends Controller
         }
         $id = filter_var($candidate, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         return $id === false ? null : $id;
+    }
+
+
+
+    private function buildInformeDataPayload(BaseCatalog $m): array
+    {
+        $payload = $_POST;
+        unset($payload['_csrf'], $payload['id']);
+
+        $cableId = filter_var($payload['cable_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($cableId !== false) {
+            $cable = $m->fetch('SELECT c.numero_cable,c.calibre,c.tipo_enchufe,c.aislacion,c.largo,c.capacidad_aislacion,mc.nombre marca FROM cables c LEFT JOIN marcas_cable mc ON mc.id=c.marca_id WHERE c.id=?', [$cableId]);
+            if ($cable) {
+                foreach ($cable as $field => $value) {
+                    if (is_string($field)) {
+                        $payload['recepcion_cable'][$field] = $value;
+                    }
+                }
+            }
+        }
+
+        $rows = [];
+        $this->flattenInformeData($payload, '', $rows);
+        return $rows;
+    }
+
+    private function flattenInformeData(array $data, string $prefix, array &$rows): void
+    {
+        foreach ($data as $key => $value) {
+            $path = $prefix === '' ? (string)$key : $prefix . '.' . (string)$key;
+            if (is_array($value)) {
+                $this->flattenInformeData($value, $path, $rows);
+                if ($value === []) {
+                    $rows[$path] = '';
+                }
+                continue;
+            }
+            $rows[$path] = $this->informeScalarToString($value);
+        }
+    }
+
+
+    private function informeScalarToString($value): string
+    {
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+        if ($value === null) {
+            return '';
+        }
+        return (string)$value;
+    }
+
+    private function guardarDatosInforme(BaseCatalog $m, int $informeId, array $datos): void
+    {
+        $m->execSql('DELETE FROM informe_datos WHERE informe_id=?', [$informeId]);
+        foreach ($datos as $campo => $valor) {
+            $campo = substr((string)$campo, 0, 190);
+            $m->execSql('INSERT INTO informe_datos(informe_id,campo,valor) VALUES(?,?,?)', [$informeId, $campo, (string)$valor]);
+        }
+    }
+
+    private function guardarOpcionesInforme(BaseCatalog $m, int $informeId): void
+    {
+        $map = [
+            'fallas_chaquetas' => 'informe_fallas_chaquetas',
+            'fallas_enchufe' => 'informe_fallas_enchufe',
+            'lugares_falla' => 'informe_lugares_falla',
+            'causas_probables' => 'informe_causas_probables',
+        ];
+        foreach ($map as $field => $table) {
+            $m->execSql("DELETE FROM `$table` WHERE informe_id=?", [$informeId]);
+            foreach ($_POST[$field . '_raw'] ?? [] as $opcion) {
+                $opcion = trim((string)$opcion);
+                if ($opcion === '') continue;
+                $m->execSql("INSERT INTO `$table`(informe_id,opcion) VALUES(?,?)", [$informeId, $opcion]);
+            }
+        }
+    }
+
+
+    private function guardarPruebasInforme(BaseCatalog $m, int $informeId): void
+    {
+        $fields = ['pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'];
+        $m->execSql('DELETE FROM informe_pruebas WHERE informe_id=?', [$informeId]);
+        foreach ($fields as $field) {
+            foreach ($_POST[$field . '_raw'] ?? [] as $item => $values) {
+                if (!is_array($values)) continue;
+                $item = trim((string)$item);
+                if ($item === '') continue;
+                $realizada = !empty($values['realizada']) ? 1 : 0;
+                $conFalla = $realizada && !empty($values['con_falla']) ? 1 : 0;
+                $valor = isset($values['valor']) ? trim((string)$values['valor']) : null;
+                $unidad = isset($values['unidad']) ? trim((string)$values['unidad']) : null;
+                $m->execSql(
+                    'INSERT INTO informe_pruebas(informe_id,campo,item,realizada,con_falla,valor,unidad) VALUES(?,?,?,?,?,?,?)',
+                    [$informeId, $field, $item, $realizada, $conFalla, $valor !== '' ? $valor : null, $unidad !== '' ? $unidad : null]
+                );
+            }
+        }
     }
 
     private function guardarMaterialesUsados(BaseCatalog $m, int $informeId): void

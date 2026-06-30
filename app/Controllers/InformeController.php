@@ -111,16 +111,8 @@ class InformeController extends Controller
                     continue;
                 }
                 $isOn = !empty($values['realizada']);
-                $_POST[$field][$item]['realizada'] = $isOn ? '1' : '0';
-                if (!$isOn) {
-                    unset($_POST[$field][$item]['con_falla']);
-                    continue;
-                }
-                if (!empty($values['con_falla'])) {
-                    $_POST[$field][$item]['con_falla'] = '1';
-                } else {
-                    unset($_POST[$field][$item]['con_falla']);
-                }
+                $_POST[$field][$item]['realizada'] = $isOn;
+                $_POST[$field][$item]['con_falla'] = $isOn && !empty($values['con_falla']);
             }
         }
     }
@@ -265,8 +257,20 @@ class InformeController extends Controller
                 }
                 continue;
             }
-            $rows[$path] = $value === null ? '' : (string)$value;
+            $rows[$path] = $this->informeScalarToString($value);
         }
+    }
+
+
+    private function informeScalarToString($value): string
+    {
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+        if ($value === null) {
+            return '';
+        }
+        return (string)$value;
     }
 
     private function guardarDatosInforme(BaseCatalog $m, int $informeId, array $datos): void

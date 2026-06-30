@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
     recepcionUsuario.addEventListener('change',filterRecepcionDetails); filterRecepcionDetails();
   }
-  const cs=document.getElementById('cableSelect');function loadCable(){if(!cs)return;const d=JSON.parse(cs.selectedOptions[0].dataset.json||'{}');document.getElementById('cableInfo').innerHTML=['calibre','marca','largo','tipo_enchufe','capacidad_aislacion'].map(k=>`<div><b>${k.replaceAll('_',' ')}</b><br>${d[k]||''}</div>`).join('')} if(cs){cs.addEventListener('change',loadCable);loadCable()}
+  const cs=document.getElementById('cableSelect');function loadCable(){if(!cs)return;const selected=cs.selectedOptions[0];const saved=cs.dataset.snapshot?JSON.parse(cs.dataset.snapshot||'{}'):{};const live=JSON.parse(selected?.dataset.json||'{}');const d=Object.keys(saved).length?saved:live;const info=document.getElementById('cableInfo');if(info)info.innerHTML=['numero_cable','calibre','marca','largo','tipo_enchufe','aislacion','capacidad_aislacion'].map(k=>`<div><b>${k.replaceAll('_',' ')}</b><br>${d[k]||''}</div>`).join('')} if(cs){cs.addEventListener('change',()=>{cs.dataset.snapshot='';loadCable();});loadCable()}
   if(typeof Chart==='undefined')return;
   const gridColor='rgba(15,23,42,.10)', textColor='#334155';
   Chart.defaults.color=textColor; Chart.defaults.borderColor=gridColor;
@@ -178,8 +178,10 @@ document.addEventListener('DOMContentLoaded',()=>{
     sections.forEach(([title,fields])=>{
       const h=document.createElement('div'); h.className='confirm-section'; h.textContent=title; summary.append(h);
       fields.forEach(name=>{
-        const vals=valuesFor(name), item=document.createElement('div'); item.className=`confirm-item ${vals.length?'':'is-empty'}`;
-        item.innerHTML=`<b>${labels[name]||name}</b><span>${vals.length?vals.join(', '):'Sin dato'}</span>`; summary.append(item);
+        const vals=valuesFor(name);
+        if(!vals.length) return;
+        const item=document.createElement('div'); item.className='confirm-item';
+        item.innerHTML=`<b>${labels[name]||name}</b><span>${vals.join(', ')}</span>`; summary.append(item);
       });
     });
     return missing.length===0;

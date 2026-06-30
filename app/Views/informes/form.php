@@ -11,6 +11,15 @@ foreach (['fallas_chaquetas','fallas_enchufe','lugares_falla','causas_probables'
 function checked_nested(array $values, string $group, string $item, string $key): string { return !empty($values[$group][$item][$key]) ? 'checked' : ''; }
 function value_nested(array $values, string $group, string $item, string $key): string { return e($values[$group][$item][$key] ?? ''); }
 $isEdit = !empty($item['id']);
+$recepcionSnapshot = $item ? array_filter([
+    'numero_cable' => $item['recepcion_numero_cable'] ?? null,
+    'calibre' => $item['recepcion_calibre'] ?? null,
+    'tipo_enchufe' => $item['recepcion_tipo_enchufe'] ?? null,
+    'aislacion' => $item['recepcion_aislacion'] ?? null,
+    'largo' => $item['recepcion_largo'] ?? null,
+    'capacidad_aislacion' => $item['recepcion_capacidad_aislacion'] ?? null,
+    'marca' => $item['recepcion_marca_cable'] ?? null,
+], fn($value) => $value !== null && $value !== '') : [];
 ?>
 <div class="report-shell">
   <div class="report-hero">
@@ -35,7 +44,7 @@ $isEdit = !empty($item['id']);
         <div class="col-lg-3 col-md-6"><label>Supervisor responsable</label><select name="supervisor_id" class="form-select" required><?php foreach($supervisores as $s): ?><option value="<?= $s['id'] ?>" <?= ($item['supervisor_id']??'')==$s['id']?'selected':'' ?>><?= e($s['nombre'].' '.$s['apellido']) ?></option><?php endforeach; ?></select></div>
         <div class="col-lg-2 col-md-6"><label>Fecha recepción</label><input type="date" class="form-control" name="fecha_recepcion_cable" value="<?= e($item['fecha_recepcion_cable']??date('Y-m-d')) ?>" required></div>
         <div class="col-lg-2 col-md-6"><label>Fecha entrega</label><input type="date" class="form-control" name="fecha_entrega_cable" value="<?= e($item['fecha_entrega_cable']??'') ?>"></div>
-        <div class="col-lg-3 col-md-6"><label>Cable</label><select id="cableSelect" name="cable_id" class="form-select" required><?php foreach($cables as $c): ?><option data-json='<?= e(json_encode($c)) ?>' value="<?= $c['id'] ?>" <?= ($item['cable_id']??'')==$c['id']?'selected':'' ?>><?= e($c['numero_cable']) ?></option><?php endforeach; ?></select></div>
+        <div class="col-lg-3 col-md-6"><label>Cable</label><select id="cableSelect" name="cable_id" class="form-select" data-snapshot='<?= e(json_encode($recepcionSnapshot, JSON_UNESCAPED_UNICODE)) ?>' required><?php foreach($cables as $c): ?><option data-json='<?= e(json_encode($c)) ?>' value="<?= $c['id'] ?>" <?= ($item['cable_id']??'')==$c['id']?'selected':'' ?>><?= e($c['numero_cable']) ?></option><?php endforeach; ?></select></div>
         <div class="col-lg-2 col-md-6"><label>Estado informe</label><select name="estado_informe" class="form-select"><?php foreach(['borrador','finalizado','anulado'] as $e): ?><option value="<?= e($e) ?>" <?= ($item['estado_informe']??'borrador')===$e?'selected':'' ?>><?= ucfirst($e) ?></option><?php endforeach; ?></select></div>
         <div class="col-lg-4 col-md-6"><label>Origen cable</label><select name="origen_cable" class="form-select"><option value="">Seleccione origen...</option><?php foreach($origenes as $o): ?><option value="<?= e($o['nombre']) ?>" <?= ($item['origen_cable']??'')===$o['nombre']?'selected':'' ?>><?= e($o['nombre']) ?></option><?php endforeach; ?></select></div>
       </div>
@@ -62,12 +71,12 @@ $isEdit = !empty($item['id']);
     <div class="report-submit"><a class="btn btn-outline-light" href="<?= url('informes-cable') ?>">Cancelar</a><button type="submit" class="btn btn-seim">Guardar informe</button></div>
   </form>
   <div class="modal fade" id="confirmInformeModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
           <div>
             <h5 class="modal-title">Confirmar datos del informe</h5>
-            <small class="text-muted">Revise la información que se enviará a la base de datos antes de guardar.</small>
+            <small class="text-muted">Resumen compacto de los datos que se guardarán.</small>
           </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
         </div>

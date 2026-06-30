@@ -181,10 +181,20 @@ class InformeController extends Controller
             }
         }
 
+        $recepcionFallback = [
+            'recepcion_cable.numero_cable' => 'recepcion_numero_cable',
+            'recepcion_cable.calibre' => 'recepcion_calibre',
+            'recepcion_cable.tipo_enchufe' => 'recepcion_tipo_enchufe',
+            'recepcion_cable.aislacion' => 'recepcion_aislacion',
+            'recepcion_cable.largo' => 'recepcion_largo',
+            'recepcion_cable.capacidad_aislacion' => 'recepcion_capacidad_aislacion',
+            'recepcion_cable.marca' => 'recepcion_marca_cable',
+        ];
         foreach ($m->fetchAll('SELECT campo,valor FROM informe_datos WHERE informe_id=?', [$item['id']]) as $row) {
             $campo = (string)$row['campo'];
-            if (array_key_exists($campo, $item) && ($item[$campo] === null || $item[$campo] === '')) {
-                $item[$campo] = $row['valor'];
+            $target = $recepcionFallback[$campo] ?? $campo;
+            if (array_key_exists($target, $item) && ($item[$target] === null || $item[$target] === '')) {
+                $item[$target] = $row['valor'];
             }
         }
 

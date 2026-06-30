@@ -68,6 +68,7 @@ class InformeController extends Controller
 
             $cols = ['supervisor_id', 'fecha_recepcion_cable', 'fecha_entrega_cable', 'cable_id', 'origen_cable', 'recepcion_numero_cable', 'recepcion_calibre', 'recepcion_tipo_enchufe', 'recepcion_aislacion', 'recepcion_largo', 'recepcion_capacidad_aislacion', 'recepcion_marca_cable', 'estado_informe', 'rep_ing_mufas_termo', 'rep_ing_mufa_union', 'rep_ing_chaquetas', 'rep_sal_mufas_termo', 'rep_sal_mufa_union', 'rep_sal_chaquetas', 'estado_operativo', 'destino_cable', 'tipo_enchufe_entrega', 'largo_entrega', 'marca_entrega', 'capacidad_aislacion_entrega', 'fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales', 'observacion_final'];
             $p = array_map(fn($c) => $_POST[$c] ?? null, $cols);
+            $mainPayload = array_combine($cols, $p) ?: [];
 
             if ($id !== null) {
                 if (!$m->find('informes_cable', $id)) {
@@ -95,7 +96,7 @@ class InformeController extends Controller
             $this->guardarOpcionesInforme($m, $id);
             $this->guardarPruebasInforme($m, $id);
             $this->guardarMaterialesUsados($m, $id);
-            $this->assertInformePersisted($m, $id);
+            $this->assertInformePersisted($m, $id, $mainPayload);
             $m->audit('Guardar', 'Informes de cable', $id, 'Informe guardado');
             $db->commit();
             flash('success', 'Informe guardado.');
@@ -450,10 +451,19 @@ class InformeController extends Controller
     }
 
 
-    private function assertInformePersisted(BaseCatalog $m, int $informeId): void
+    private function assertInformePersisted(BaseCatalog $m, int $informeId, array $expectedMain = []): void
     {
-        if (!$m->fetch('SELECT id FROM informes_cable WHERE id=?', [$informeId])) {
+        $row = $m->fetch('SELECT * FROM informes_cable WHERE id=?', [$informeId]);
+        if (!$row) {
             throw new \RuntimeException('No se pudo confirmar el guardado en la tabla informes_cable.');
+        }
+        foreach ($expectedMain as $column => $expected) {
+            if ($expected === null || !array_key_exists($column, $row)) {
+                continue;
+            }
+            if ((string)$row[$column] !== (string)$expected) {
+                throw new \RuntimeException("El dato `$column` no quedó guardado correctamente en informes_cable.");
+            }
         }
         if (!$m->fetch('SELECT id FROM informe_datos WHERE informe_id=? LIMIT 1', [$informeId])) {
             throw new \RuntimeException('No se pudo confirmar el guardado de los datos de trazabilidad del informe.');

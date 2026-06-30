@@ -21,7 +21,7 @@ $isEdit = !empty($item['id']);
     </div>
     <div class="report-hero-actions">
       <a class="btn btn-outline-light" href="<?= url('informes-cable') ?>">Volver al listado</a>
-      <button class="btn btn-seim" form="informeCableForm">Guardar informe</button>
+      <button type="submit" class="btn btn-seim" form="informeCableForm">Guardar informe</button>
     </div>
   </div>
 
@@ -32,10 +32,10 @@ $isEdit = !empty($item['id']);
     <section class="report-section report-section-wide">
       <div class="section-head"><span>1</span><div><h2>Cabecera del informe</h2><p>Identificación general, fechas y cable a intervenir.</p></div></div>
       <div class="row g-3">
-        <div class="col-lg-3 col-md-6"><label>Supervisor responsable</label><select name="supervisor_id" class="form-select" required><option value="">Seleccione...</option><?php foreach($supervisores as $s): ?><option value="<?= $s['id'] ?>" <?= ($item['supervisor_id']??'')==$s['id']?'selected':'' ?>><?= e($s['nombre'].' '.$s['apellido']) ?></option><?php endforeach; ?></select></div>
+        <div class="col-lg-3 col-md-6"><label>Supervisor responsable</label><select name="supervisor_id" class="form-select" required><?php foreach($supervisores as $s): ?><option value="<?= $s['id'] ?>" <?= ($item['supervisor_id']??'')==$s['id']?'selected':'' ?>><?= e($s['nombre'].' '.$s['apellido']) ?></option><?php endforeach; ?></select></div>
         <div class="col-lg-2 col-md-6"><label>Fecha recepción</label><input type="date" class="form-control" name="fecha_recepcion_cable" value="<?= e($item['fecha_recepcion_cable']??date('Y-m-d')) ?>" required></div>
         <div class="col-lg-2 col-md-6"><label>Fecha entrega</label><input type="date" class="form-control" name="fecha_entrega_cable" value="<?= e($item['fecha_entrega_cable']??'') ?>"></div>
-        <div class="col-lg-3 col-md-6"><label>Cable</label><select id="cableSelect" name="cable_id" class="form-select" required><option value="">Seleccione cable...</option><?php foreach($cables as $c): ?><option data-json='<?= e(json_encode($c)) ?>' value="<?= $c['id'] ?>" <?= ($item['cable_id']??'')==$c['id']?'selected':'' ?>><?= e($c['numero_cable']) ?></option><?php endforeach; ?></select></div>
+        <div class="col-lg-3 col-md-6"><label>Cable</label><select id="cableSelect" name="cable_id" class="form-select" required><?php foreach($cables as $c): ?><option data-json='<?= e(json_encode($c)) ?>' value="<?= $c['id'] ?>" <?= ($item['cable_id']??'')==$c['id']?'selected':'' ?>><?= e($c['numero_cable']) ?></option><?php endforeach; ?></select></div>
         <div class="col-lg-2 col-md-6"><label>Estado informe</label><select name="estado_informe" class="form-select"><?php foreach(['borrador','finalizado','anulado'] as $e): ?><option value="<?= e($e) ?>" <?= ($item['estado_informe']??'borrador')===$e?'selected':'' ?>><?= ucfirst($e) ?></option><?php endforeach; ?></select></div>
         <div class="col-lg-4 col-md-6"><label>Origen cable</label><select name="origen_cable" class="form-select"><option value="">Seleccione origen...</option><?php foreach($origenes as $o): ?><option value="<?= e($o['nombre']) ?>" <?= ($item['origen_cable']??'')===$o['nombre']?'selected':'' ?>><?= e($o['nombre']) ?></option><?php endforeach; ?></select></div>
       </div>
@@ -59,6 +59,28 @@ $isEdit = !empty($item['id']);
     <section class="report-section report-section-wide"><div class="section-head"><span>14</span><div><h2>Materiales usados</h2><p>Seleccione usuario, material entregado y cantidad utilizada. El stock disponible se descuenta al guardar.</p></div></div><div id="informeMaterialRows"><?php if(empty($usuariosMateriales)): ?><div class="alert alert-warning py-2">No hay materiales entregados disponibles para uso.</div><?php else: ?><?php $rowsMateriales = !empty($materialesInforme) ? $materialesInforme : [null]; foreach($rowsMateriales as $materialActual): ?><div class="row g-3 mb-2 informe-material-row"><div class="col-md-4"><label>Usuario</label><select class="form-select informe-material-user"><option value="">Seleccione usuario...</option><?php foreach($usuariosConMateriales as $uid=>$nombre): ?><option value="<?= e($uid) ?>" <?= $materialActual && (int)$materialActual['usuario_receptor_id']===(int)$uid?'selected':'' ?>><?= e($nombre) ?></option><?php endforeach; ?></select></div><div class="col-md-5"><label>Material entregado</label><select name="material_detalle_id[]" class="form-select informe-material-select"><option value="">Seleccione material...</option><?php foreach($usuariosMateriales as $mu): ?><option value="<?= e($mu['detalle_id']) ?>" data-user="<?= e($mu['usuario_receptor_id']) ?>" data-disponible="<?= e($mu['cantidad_disponible']) ?>" <?= $materialActual && (int)$materialActual['detalle_id']===(int)$mu['detalle_id']?'selected':'' ?>><?= e($mu['codigo_interno'].' · '.$mu['nombre_material'].' (disp. '.$mu['cantidad_disponible'].' '.$mu['unidad_medida'].')') ?></option><?php endforeach; ?></select></div><div class="col-md-2"><label>Cantidad usada</label><input type="number" step="0.01" min="0" name="material_cantidad[]" class="form-control informe-material-cantidad" placeholder="0" value="<?= e($materialActual['cantidad_utilizada']??'') ?>"></div><div class="col-md-1 d-flex align-items-end"><button type="button" class="btn btn-outline-light w-100 remove-informe-material">×</button></div></div><?php endforeach; ?><?php endif; ?></div><?php if(!empty($usuariosMateriales)): ?><button type="button" class="btn btn-sm btn-outline-light mt-2" id="addInformeMaterial">Agregar material usado</button><?php endif; ?></section>
 
     <section class="report-section report-section-wide"><div class="section-head"><span>15</span><div><h2>Observación final</h2><p>Notas de cierre, recomendaciones o restricciones operativas.</p></div></div><textarea class="form-control" name="observacion_final" rows="4" placeholder="Escriba observaciones relevantes para trazabilidad del informe..."><?= e($item['observacion_final']??'') ?></textarea></section>
-    <div class="report-submit"><a class="btn btn-outline-light" href="<?= url('informes-cable') ?>">Cancelar</a><button class="btn btn-seim">Guardar informe</button></div>
+    <div class="report-submit"><a class="btn btn-outline-light" href="<?= url('informes-cable') ?>">Cancelar</a><button type="submit" class="btn btn-seim">Guardar informe</button></div>
   </form>
+  <div class="modal fade" id="confirmInformeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title">Confirmar datos del informe</h5>
+            <small class="text-muted">Revise la información que se enviará a la base de datos antes de guardar.</small>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-danger d-none" id="confirmInformeErrors"></div>
+          <div class="confirm-grid" id="confirmInformeSummary"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Volver a editar</button>
+          <button type="button" class="btn btn-seim" id="confirmInformeSubmit">Confirmar y guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>

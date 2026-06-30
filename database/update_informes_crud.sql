@@ -31,6 +31,7 @@ DELIMITER ;
 
 CREATE TABLE IF NOT EXISTS informe_materiales(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,material_id INT NOT NULL,cantidad_utilizada DECIMAL(12,2) NOT NULL);
 CREATE TABLE IF NOT EXISTS informe_pruebas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(80) NOT NULL,item VARCHAR(120) NOT NULL,realizada TINYINT(1) NOT NULL DEFAULT 0,con_falla TINYINT(1) NOT NULL DEFAULT 0,valor VARCHAR(80) NULL,unidad VARCHAR(40) NULL);
+CREATE TABLE IF NOT EXISTS informe_datos(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(190) NOT NULL,valor LONGTEXT NULL);
 CREATE TABLE IF NOT EXISTS informe_fallas_chaquetas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120));
 CREATE TABLE IF NOT EXISTS informe_fallas_enchufe(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120));
 CREATE TABLE IF NOT EXISTS informe_lugares_falla(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT,opcion VARCHAR(120));
@@ -86,6 +87,9 @@ CALL seim_add_column_if_missing('informe_pruebas', 'realizada', 'TINYINT(1) NOT 
 CALL seim_add_column_if_missing('informe_pruebas', 'con_falla', 'TINYINT(1) NOT NULL DEFAULT 0');
 CALL seim_add_column_if_missing('informe_pruebas', 'valor', 'VARCHAR(80) NULL');
 CALL seim_add_column_if_missing('informe_pruebas', 'unidad', 'VARCHAR(40) NULL');
+CALL seim_add_column_if_missing('informe_datos', 'informe_id', 'INT NULL');
+CALL seim_add_column_if_missing('informe_datos', 'campo', 'VARCHAR(190) NULL');
+CALL seim_add_column_if_missing('informe_datos', 'valor', 'LONGTEXT NULL');
 CALL seim_add_column_if_missing('informe_materiales', 'entrega_detalle_id', 'INT NULL');
 CALL seim_add_column_if_missing('informe_materiales', 'stock_usuario_antes', 'DECIMAL(12,2) NULL');
 CALL seim_add_column_if_missing('informe_materiales', 'stock_usuario_despues', 'DECIMAL(12,2) NULL');

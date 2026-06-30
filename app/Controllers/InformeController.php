@@ -51,6 +51,7 @@ class InformeController extends Controller
         $db->beginTransaction();
         try {
             $this->sanitizeRevisionCards();
+            $datosInforme = $this->buildInformeDataPayload($m);
             $jsonFields = ['fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'];
             foreach ($jsonFields as $f) {
                 $_POST[$f . '_raw'] = $_POST[$f] ?? [];
@@ -82,6 +83,7 @@ class InformeController extends Controller
                 $id = (int)$db->lastInsertId();
             }
 
+            $this->guardarDatosInforme($m, $id, $datosInforme);
             $this->guardarOpcionesInforme($m, $id);
             $this->guardarPruebasInforme($m, $id);
             $this->guardarMaterialesUsados($m, $id);
@@ -183,6 +185,11 @@ class InformeController extends Controller
             'valor' => 'VARCHAR(80) NULL',
             'unidad' => 'VARCHAR(40) NULL',
         ]);
+        $this->ensureColumns($m, 'informe_datos', [
+            'informe_id' => 'INT NULL',
+            'campo' => 'VARCHAR(190) NULL',
+            'valor' => 'LONGTEXT NULL',
+        ]);
     }
 
 
@@ -193,6 +200,7 @@ class InformeController extends Controller
         }
         $m->execSql('CREATE TABLE IF NOT EXISTS informe_materiales(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,material_id INT NOT NULL,cantidad_utilizada DECIMAL(12,2) NOT NULL)');
         $m->execSql('CREATE TABLE IF NOT EXISTS informe_pruebas(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(80) NOT NULL,item VARCHAR(120) NOT NULL,realizada TINYINT(1) NOT NULL DEFAULT 0,con_falla TINYINT(1) NOT NULL DEFAULT 0,valor VARCHAR(80) NULL,unidad VARCHAR(40) NULL)');
+        $m->execSql('CREATE TABLE IF NOT EXISTS informe_datos(id INT AUTO_INCREMENT PRIMARY KEY,informe_id INT NOT NULL,campo VARCHAR(190) NOT NULL,valor LONGTEXT NULL)');
     }
 
     private function ensureColumns(BaseCatalog $m, string $table, array $columns): void
@@ -222,6 +230,53 @@ class InformeController extends Controller
         return $id === false ? null : $id;
     }
 
+
+
+    private function buildInformeDataPayload(BaseCatalog $m): array
+    {
+        $payload = $_POST;
+        unset($payload['_csrf'], $payload['id']);
+
+        $cableId = filter_var($payload['cable_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($cableId !== false) {
+            $cable = $m->fetch('SELECT c.numero_cable,c.calibre,c.tipo_enchufe,c.aislacion,c.largo,c.capacidad_aislacion,mc.nombre marca FROM cables c LEFT JOIN marcas_cable mc ON mc.id=c.marca_id WHERE c.id=?', [$cableId]);
+            if ($cable) {
+                foreach ($cable as $field => $value) {
+                    if (is_string($field)) {
+                        $payload['recepcion_cable'][$field] = $value;
+                    }
+                }
+            }
+        }
+
+        $rows = [];
+        $this->flattenInformeData($payload, '', $rows);
+        return $rows;
+    }
+
+    private function flattenInformeData(array $data, string $prefix, array &$rows): void
+    {
+        foreach ($data as $key => $value) {
+            $path = $prefix === '' ? (string)$key : $prefix . '.' . (string)$key;
+            if (is_array($value)) {
+                $this->flattenInformeData($value, $path, $rows);
+                if ($value === []) {
+                    $rows[$path] = '';
+                }
+                continue;
+            }
+            $rows[$path] = $value === null ? '' : (string)$value;
+        }
+    }
+
+    private function guardarDatosInforme(BaseCatalog $m, int $informeId, array $datos): void
+    {
+        $m->execSql('DELETE FROM informe_datos WHERE informe_id=?', [$informeId]);
+        foreach ($datos as $campo => $valor) {
+            $campo = substr((string)$campo, 0, 190);
+            $m->execSql('INSERT INTO informe_datos(informe_id,campo,valor) VALUES(?,?,?)', [$informeId, $campo, (string)$valor]);
+        }
+    }
 
     private function guardarOpcionesInforme(BaseCatalog $m, int $informeId): void
     {

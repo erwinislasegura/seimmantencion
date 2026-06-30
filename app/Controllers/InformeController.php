@@ -51,11 +51,14 @@ class InformeController extends Controller
         $db->beginTransaction();
         try {
             $this->sanitizeRevisionCards();
-            $datosInforme = $this->buildInformeDataPayload($m);
             $jsonFields = ['fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales'];
             foreach ($jsonFields as $f) {
-                $_POST[$f . '_raw'] = $_POST[$f] ?? [];
-                $_POST[$f] = json_encode($_POST[$f] ?? [], JSON_UNESCAPED_UNICODE);
+                $_POST[$f] = $_POST[$f] ?? [];
+                $_POST[$f . '_raw'] = $_POST[$f];
+            }
+            $datosInforme = $this->buildInformeDataPayload($m);
+            foreach ($jsonFields as $f) {
+                $_POST[$f] = json_encode($_POST[$f], JSON_UNESCAPED_UNICODE);
             }
 
             $cols = ['supervisor_id', 'fecha_recepcion_cable', 'fecha_entrega_cable', 'cable_id', 'origen_cable', 'estado_informe', 'rep_ing_mufas_termo', 'rep_ing_mufa_union', 'rep_ing_chaquetas', 'rep_sal_mufas_termo', 'rep_sal_mufa_union', 'rep_sal_chaquetas', 'estado_operativo', 'destino_cable', 'tipo_enchufe_entrega', 'largo_entrega', 'marca_entrega', 'capacidad_aislacion_entrega', 'fallas_chaquetas', 'fallas_enchufe', 'lugares_falla', 'causas_probables', 'pruebas_continuidad', 'prueba_ez_thump', 'continuidad_final', 'vlf', 'pruebas_finales', 'observacion_final'];
